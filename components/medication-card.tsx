@@ -16,18 +16,23 @@ interface MedicationCardProps {
     medication: Medication & { medication_dosages?: MedicationDosage[] };
     onConfirmDose?: (dosageId: string) => void;
     onPress?: () => void;
+    onEdit?: () => void;
+    confirmedDosageIds?: string[];
 }
 
 export function MedicationCard({
     medication,
     onConfirmDose,
     onPress,
+    onEdit,
+    confirmedDosageIds = [],
 }: MedicationCardProps) {
     const dosages = medication.medication_dosages || [];
     const nextDosage = dosages[0];
+    const isTaken = nextDosage && confirmedDosageIds.includes(nextDosage.id);
 
     const handleConfirm = () => {
-        if (nextDosage && onConfirmDose) {
+        if (nextDosage && onConfirmDose && !isTaken) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             onConfirmDose(nextDosage.id);
         }
@@ -79,6 +84,12 @@ export function MedicationCard({
                 </View>
             </View>
 
+            {onEdit && (
+                <TouchableOpacity onPress={onEdit} hitSlop={12} style={styles.editButton}>
+                    <IconSymbol name="pencil" size={20} color="#007AFF" />
+                </TouchableOpacity>
+            )}
+
             {medication.purpose && (
                 <Text style={styles.purpose}>{medication.purpose}</Text>
             )}
@@ -104,12 +115,19 @@ export function MedicationCard({
 
             {nextDosage && onConfirmDose && (
                 <TouchableOpacity
-                    style={styles.confirmButton}
+                    style={[styles.confirmButton, isTaken && styles.confirmButtonTaken]}
                     onPress={handleConfirm}
+                    disabled={isTaken}
                     activeOpacity={0.8}
                 >
-                    <IconSymbol name="checkmark" size={18} color="#fff" />
-                    <Text style={styles.confirmText}>Confirm Dose</Text>
+                    <IconSymbol
+                        name={isTaken ? "checkmark.circle.fill" : "checkmark"}
+                        size={18}
+                        color={isTaken ? "#34C759" : "#fff"}
+                    />
+                    <Text style={[styles.confirmText, isTaken && styles.confirmTextTaken]}>
+                        {isTaken ? 'Taken Today' : 'Confirm Dose'}
+                    </Text>
                 </TouchableOpacity>
             )}
 
@@ -210,10 +228,18 @@ const styles = StyleSheet.create({
         gap: 8,
         marginBottom: 12,
     },
+    confirmButtonTaken: {
+        backgroundColor: '#F2F2F7',
+        borderWidth: 1,
+        borderColor: '#E5E5EA',
+    },
     confirmText: {
         color: '#fff',
         fontSize: 14,
         fontWeight: '600',
+    },
+    confirmTextTaken: {
+        color: '#34C759',
     },
     instructionsSection: {
         flexDirection: 'row',
@@ -225,5 +251,11 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#666',
         fontStyle: 'italic',
+    },
+    editButton: {
+        position: 'absolute',
+        top: 16,
+        right: 16,
+        padding: 4,
     },
 });
