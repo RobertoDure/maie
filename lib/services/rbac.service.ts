@@ -62,7 +62,7 @@ export class RBACService {
         .eq('id', cycleId)
         .single();
 
-      if (cycle?.patient_id === userId && role === 'patient') {
+      if (cycle?.patient_id === userId) {
         return true;
       }
 

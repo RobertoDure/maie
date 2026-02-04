@@ -2,7 +2,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/auth-context';
 import { Database } from '@/lib/database.types';
 import { AppointmentService } from '@/lib/services/appointment.service';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -48,6 +48,27 @@ export default function AppointmentsScreen() {
     const [clinicianName, setClinicianName] = useState('');
     const [notes, setNotes] = useState('');
     const [showDatePicker, setShowDatePicker] = useState(false);
+
+    const onDateChange = (event: any, selectedDate?: Date) => {
+        const currentDate = selectedDate || scheduledAt;
+        if (Platform.OS === 'ios') {
+            setShowDatePicker(false);
+        }
+        setScheduledAt(currentDate);
+    };
+
+    const showMode = (currentMode: 'date' | 'time') => {
+        if (Platform.OS === 'android') {
+            DateTimePickerAndroid.open({
+                value: scheduledAt,
+                onChange: onDateChange,
+                mode: currentMode,
+                is24Hour: true,
+            });
+        } else {
+            setShowDatePicker(true);
+        }
+    };
 
     const loadAppointments = async () => {
         if (!user || !cycleId) return;
@@ -276,17 +297,17 @@ export default function AppointmentsScreen() {
                         <Text style={styles.label}>Date & Time</Text>
                         <TouchableOpacity
                             style={styles.dateButton}
-                            onPress={() => setShowDatePicker(true)}
+                            onPress={() => showMode('date')}
                         >
                             <Text>{formatDate(scheduledAt.toISOString())}</Text>
                         </TouchableOpacity>
-                        {showDatePicker && (
+                        {showDatePicker && Platform.OS === 'ios' && (
                             <DateTimePicker
                                 value={scheduledAt}
                                 mode="datetime"
                                 display="default"
                                 onChange={(event, date) => {
-                                    setShowDatePicker(Platform.OS === 'ios');
+                                    setShowDatePicker(false);
                                     if (date) setScheduledAt(date);
                                 }}
                             />
@@ -317,9 +338,9 @@ export default function AppointmentsScreen() {
                             multiline
                         />
                     </View>
-                </View>
-            </Modal>
-        </View>
+                </View >
+            </Modal >
+        </View >
     );
 }
 

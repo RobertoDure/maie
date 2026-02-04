@@ -11,9 +11,12 @@ type MedicationDosageInsert =
 type MedicationEvent = Database['public']['Tables']['medication_events']['Row'];
 type MedicationEventInsert =
   Database['public']['Tables']['medication_events']['Insert'];
+type MedicationUpdate = Database['public']['Tables']['medications']['Update'];
+type MedicationDosageUpdate =
+  Database['public']['Tables']['medication_dosages']['Update'];
 
 export interface MedicationWithDosages extends Medication {
-  dosages: MedicationDosage[];
+  medication_dosages: MedicationDosage[];
 }
 
 export interface DosageWithEvents extends MedicationDosage {
@@ -83,6 +86,46 @@ export class MedicationService {
   }
 
   /**
+   * Update a medication
+   */
+  static async updateMedication(
+    userId: string,
+    medicationId: string,
+    updates: MedicationUpdate
+  ): Promise<Medication> {
+    try {
+      // Check access via existing medication record
+      const { data: existing } = await supabase
+        .from('medications')
+        .select('cycle_id')
+        .eq('id', medicationId)
+        .single();
+
+      if (!existing) throw new Error('Medication not found');
+
+      const canWrite = await RBACService.canWriteMedicationEvent(userId, existing.cycle_id);
+      if (!canWrite) {
+        throw new Error('Access denied');
+      }
+
+      const { data, error } = await supabase
+        .from('medications')
+        .update(updates)
+        .eq('id', medicationId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      await AuditService.log(userId, 'UPDATE', 'medication', medicationId);
+      return data;
+    } catch (error) {
+      console.error('Error updating medication:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Add dosage schedule to a medication
    */
   static async addDosage(
@@ -103,6 +146,54 @@ export class MedicationService {
       return data;
     } catch (error) {
       console.error('Error adding dosage:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a dosage
+   */
+  static async updateDosage(
+    userId: string,
+    dosageId: string,
+    updates: MedicationDosageUpdate
+  ): Promise<MedicationDosage> {
+    try {
+      // Check access via medication -> cycle
+      const { data: dosage } = await supabase
+        .from('medication_dosages')
+        .select('medication_id')
+        .eq('id', dosageId)
+        .single();
+
+      if (!dosage) throw new Error('Dosage not found');
+
+      const { data: medication } = await supabase
+        .from('medications')
+        .select('cycle_id')
+        .eq('id', dosage.medication_id)
+        .single();
+
+      if (!medication) throw new Error('Medication not found');
+
+      const canWrite = await RBACService.canWriteMedicationEvent(userId, medication.cycle_id);
+      if (!canWrite) {
+        throw new Error('Access denied');
+      }
+
+      const { data, error } = await supabase
+        .from('medication_dosages')
+        .update(updates)
+        .eq('id', dosageId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      await AuditService.log(userId, 'UPDATE', 'medication_dosage', dosageId);
+      return data;
+    } catch (error) {
+      console.error('Error updating dosage:', error);
       throw error;
     }
   }
@@ -284,6 +375,61 @@ export class MedicationService {
       return events || [];
     } catch (error) {
       console.error('Error fetching missed events:', error);
+      throw error;
+    }
+  }
+  /**
+   * Get medication events for a specific day
+   * Returns list of events scheduled for the given date
+   */
+  static async getDailyEvents(
+    userId: string,
+    cycleId: string,
+    date: Date
+  ): Promise<MedicationEvent[]> {
+    try {
+      const hasAccess = await RBACService.canReadCycle(userId, cycleId);
+      if (!hasAccess) {
+        throw new Error('Access denied');
+      }
+
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // Get all medication dosages for this cycle
+      const { data: medications } = await supabase
+        .from('medications')
+        .select('id')
+        .eq('cycle_id', cycleId);
+
+      const medicationIds = medications?.map((m) => m.id) || [];
+
+      if (medicationIds.length === 0) return [];
+
+      const { data: dosages } = await supabase
+        .from('medication_dosages')
+        .select('id')
+        .in('medication_id', medicationIds);
+
+      const dosageIds = dosages?.map((d) => d.id) || [];
+
+      if (dosageIds.length === 0) return [];
+
+      const { data: events, error } = await supabase
+        .from('medication_events')
+        .select('*')
+        .in('dosage_id', dosageIds)
+        .gte('scheduled_at', startOfDay.toISOString())
+        .lte('scheduled_at', endOfDay.toISOString());
+
+      if (error) throw error;
+
+      return events || [];
+    } catch (error) {
+      console.error('Error fetching daily events:', error);
       throw error;
     }
   }
