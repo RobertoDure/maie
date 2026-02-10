@@ -1,10 +1,13 @@
+import { AppointmentCard } from '@/components/appointment-card';
+import { Calendar } from '@/components/calendar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { BrandColors, NeutralColors, SemanticColors, Shadows } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { Database } from '@/lib/database.types';
 import { CycleService, MedicationService, MoodService } from '@/lib/services';
 import { AppointmentService } from '@/lib/services/appointment.service';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -15,6 +18,14 @@ import {
   View,
 } from 'react-native';
 
+const getCycleDay = (startDate: string) => {
+  const start = new Date(startDate);
+  const now = new Date();
+  const diff = now.getTime() - start.getTime();
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
+  return days > 0 ? days : 1;
+};
+
 type Cycle = Database['public']['Tables']['cycles']['Row'];
 type Appointment = Database['public']['Tables']['appointments']['Row'];
 
@@ -23,24 +34,34 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeCycle, setActiveCycle] = useState<Cycle | null>(null);
-  const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
   const [medicationCount, setMedicationCount] = useState(0);
   const [hasTodayCheckin, setHasTodayCheckin] = useState(false);
+
+  // Calendar State
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [monthAppointments, setMonthAppointments] = useState<Appointment[]>([]);
+  const [dayAppointments, setDayAppointments] = useState<Appointment[]>([]);
 
   const loadDashboardData = async () => {
     if (!user) return;
 
     try {
-      const [cycles, appointments, todayCheckin] = await Promise.all([
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      const startDate = new Date(year, month, 1);
+      const endDate = new Date(year, month + 1, 0, 23, 59, 59);
+
+      const [cycles, todayCheckin, monthApts] = await Promise.all([
         CycleService.getCycles(user.id),
-        AppointmentService.getUpcomingAppointments(user.id, 3),
         MoodService.hasTodayCheckin(user.id),
+        AppointmentService.getAppointmentsByDateRange(user.id, startDate, endDate),
       ]);
 
       const active = cycles.find((c) => c.status === 'active') || cycles[0] || null;
       setActiveCycle(active);
-      setUpcomingAppointments(appointments);
       setHasTodayCheckin(todayCheckin);
+      setMonthAppointments(monthApts);
 
       if (active) {
         const meds = await MedicationService.getMedications(user.id, active.id);
@@ -54,46 +75,139 @@ export default function DashboardScreen() {
     }
   };
 
+  const loadDayAppointments = useCallback(async () => {
+    if (!user) return;
+    try {
+      const data = await AppointmentService.getAppointmentsByDate(user.id, selectedDate);
+      setDayAppointments(data);
+    } catch (error) {
+      console.error('Error loading day appointments:', error);
+    }
+  }, [user, selectedDate]);
+
   useEffect(() => {
     loadDashboardData();
-  }, [user]);
+  }, [user, currentMonth]); // Reload when month changes
+
+  useEffect(() => {
+    loadDayAppointments();
+  }, [loadDayAppointments]);
 
   const onRefresh = () => {
     setRefreshing(true);
     loadDashboardData();
+    loadDayAppointments();
   };
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
+  // Handle date selection - Update selected date to show appointments below
+  const onDateSelect = (date: Date) => {
+    setSelectedDate(date);
+  };
+
+  // Get marked dates for calendar
+  const markedDates = monthAppointments
+    .filter((apt) => apt.scheduled_at)
+    .map((apt) => {
+      const date = new Date(apt.scheduled_at!);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     });
+
+  const isToday = selectedDate.toDateString() === new Date().toDateString();
+
+  const getGreetingDate = () => {
+    const now = new Date();
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long'
+    };
+    // Capitalize first letter of each word
+    return now.toLocaleDateString('en-US', options)
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   };
 
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={BrandColors.primary} />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      {/* New User Profile Header */}
       <View style={styles.header}>
-        <Text style={styles.greeting}>Welcome back</Text>
-        <Text style={styles.title}>Dashboard</Text>
+        <View style={styles.profileSection}>
+          <View style={styles.avatarContainer}>
+            <IconSymbol name="person.fill" size={24} color="#fff" />
+          </View>
+          <View>
+            <Text style={styles.greetingLabel}>Hello</Text>
+            <Text style={styles.userName}>
+              {user?.user_metadata?.full_name?.split(' ')[0] || 'Roberto!'}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.datePill}>
+          <Text style={styles.dateText}>{getGreetingDate()}</Text>
+        </View>
       </View>
 
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BrandColors.primary} />
         }
       >
+        {/* Calendar - FIRST COMPONENT */}
+        <View style={styles.calendarContainer}>
+          {activeCycle && activeCycle.start_date && (
+            <View style={styles.cycleDayContainer}>
+              <Text style={styles.cycleDayLabel}>Day</Text>
+              <Text style={styles.cycleDayValue}>{getCycleDay(activeCycle.start_date)}</Text>
+            </View>
+          )}
+          <Calendar
+            selectedDate={selectedDate}
+            onSelectDate={onDateSelect}
+            currentMonth={currentMonth}
+            onMonthChange={setCurrentMonth}
+            markedDates={markedDates}
+          />
+        </View>
+
+        {/* Selected Day Appointments - Display "Today's" or current selected date's appointments inline as well */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>
+              {isToday ? 'Appointment of the Day' : `Appointments for ${selectedDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}`}
+            </Text>
+            {activeCycle && (
+              <TouchableOpacity
+                onPress={() => router.push(`/cycle/${activeCycle.id}/appointments` as any)}
+              >
+                <Text style={styles.seeAllText}>See All</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {dayAppointments.length === 0 ? (
+            <View style={styles.emptySection}>
+              <Text style={styles.emptyText}>No appointments for this day</Text>
+            </View>
+          ) : (
+            dayAppointments.map((apt) => (
+              <AppointmentCard key={apt.id} appointment={apt} />
+            ))
+          )}
+        </View>
+
         {/* Quick Actions */}
         <View style={styles.quickActions}>
           <TouchableOpacity
@@ -103,10 +217,10 @@ export default function DashboardScreen() {
             <IconSymbol
               name={hasTodayCheckin ? 'checkmark.circle.fill' : 'heart'}
               size={28}
-              color={hasTodayCheckin ? '#34C759' : '#FF2D55'}
+              color={hasTodayCheckin ? SemanticColors.success : BrandColors.accent}
             />
             <Text style={styles.quickActionText}>
-              {hasTodayCheckin ? 'Checked In' : 'Mood Check-in'}
+              {hasTodayCheckin ? 'Checked In' : 'Mood'}
             </Text>
           </TouchableOpacity>
 
@@ -114,7 +228,7 @@ export default function DashboardScreen() {
             style={styles.quickAction}
             onPress={() => router.push('/(tabs)/medications')}
           >
-            <IconSymbol name="pills" size={28} color="#FF9500" />
+            <IconSymbol name="pills" size={28} color={BrandColors.primary} />
             <Text style={styles.quickActionText}>Medications</Text>
           </TouchableOpacity>
         </View>
@@ -143,7 +257,7 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         ) : (
           <View style={styles.noCycleCard}>
-            <IconSymbol name="calendar.badge.plus" size={48} color="#ccc" />
+            <IconSymbol name="calendar.badge.plus" size={48} color={NeutralColors.gray300} />
             <Text style={styles.noCycleText}>No active cycle</Text>
             <TouchableOpacity
               style={styles.createCycleButton}
@@ -154,52 +268,15 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* Upcoming Appointments */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Upcoming Appointments</Text>
-            {activeCycle && (
-              <TouchableOpacity
-                onPress={() => router.push(`/cycle/${activeCycle.id}/appointments` as any)}
-              >
-                <Text style={styles.seeAllText}>See All</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {upcomingAppointments.length === 0 ? (
-            <View style={styles.emptySection}>
-              <Text style={styles.emptyText}>No upcoming appointments</Text>
-            </View>
-          ) : (
-            upcomingAppointments.map((apt) => (
-              <View key={apt.id} style={styles.appointmentCard}>
-                <View style={styles.appointmentIcon}>
-                  <IconSymbol name="calendar" size={20} color="#007AFF" />
-                </View>
-                <View style={styles.appointmentInfo}>
-                  <Text style={styles.appointmentTitle}>{apt.title}</Text>
-                  <Text style={styles.appointmentTime}>
-                    {formatDate(apt.scheduled_at!)}
-                  </Text>
-                  {apt.location && (
-                    <Text style={styles.appointmentLocation}>{apt.location}</Text>
-                  )}
-                </View>
-              </View>
-            ))
-          )}
-        </View>
-
         {/* Tips Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Journey Tips</Text>
+          <Text style={styles.sectionTitle}>Tips of the Day</Text>
           <View style={styles.tipCard}>
-            <IconSymbol name="lightbulb" size={24} color="#FF9500" />
+            <IconSymbol name="lightbulb" size={24} color={SemanticColors.warning} />
             <View style={styles.tipContent}>
               <Text style={styles.tipTitle}>Stay Hydrated</Text>
               <Text style={styles.tipText}>
-                Drinking plenty of water helps support hormone function and can reduce some medication side effects.
+                Drinking plenty of water helps support hormonal function and may reduce some medication side effects.
               </Text>
             </View>
           </View>
@@ -212,65 +289,111 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: NeutralColors.gray50,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: NeutralColors.gray50,
   },
   header: {
-    padding: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
     paddingTop: 60,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    paddingBottom: 20,
+    backgroundColor: NeutralColors.white,
+    // Removed border bottom for cleaner look or keep if needed
+    borderBottomWidth: 0,
   },
-  greeting: {
+  profileSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  avatarContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: BrandColors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  greetingLabel: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
+    color: NeutralColors.gray400,
+    fontWeight: '500',
   },
-  title: {
-    fontSize: 32,
+  userName: {
+    fontSize: 20,
     fontWeight: 'bold',
+    color: BrandColors.primary,
+  },
+  datePill: {
+    backgroundColor: BrandColors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  dateText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   content: {
     padding: 16,
     paddingBottom: 32,
   },
+  calendarContainer: {
+    marginBottom: 24,
+    marginTop: 0,
+    alignItems: 'center', // Center the cycle day
+  },
+  cycleDayContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  cycleDayLabel: {
+    fontSize: 16,
+    color: NeutralColors.gray500,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  cycleDayValue: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: BrandColors.accent, // Mint color
+  },
   quickActions: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 16,
+    marginBottom: 24,
   },
   quickAction: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: NeutralColors.white,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    ...Shadows.md,
   },
   quickActionHighlight: {
     borderWidth: 2,
-    borderColor: '#FF2D55',
+    borderColor: BrandColors.accent,
   },
   quickActionText: {
     fontSize: 14,
     fontWeight: '500',
     marginTop: 8,
-    color: '#333',
+    color: NeutralColors.gray900,
   },
   cycleCard: {
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.primary,
     borderRadius: 16,
     padding: 20,
-    marginBottom: 16,
+    marginBottom: 24,
   },
   cycleHeader: {
     flexDirection: 'row',
@@ -309,20 +432,21 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   noCycleCard: {
-    backgroundColor: '#fff',
+    backgroundColor: NeutralColors.white,
     borderRadius: 16,
     padding: 32,
-    marginBottom: 16,
+    marginBottom: 24,
     alignItems: 'center',
+    ...Shadows.md,
   },
   noCycleText: {
     fontSize: 16,
-    color: '#666',
+    color: NeutralColors.gray400,
     marginTop: 12,
     marginBottom: 16,
   },
   createCycleButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.accent,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
@@ -344,66 +468,30 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: NeutralColors.gray900,
   },
   seeAllText: {
     fontSize: 14,
-    color: '#007AFF',
+    color: BrandColors.accent,
+    fontWeight: '500',
   },
   emptySection: {
-    backgroundColor: '#fff',
+    backgroundColor: NeutralColors.white,
     borderRadius: 12,
     padding: 24,
     alignItems: 'center',
+    ...Shadows.sm,
   },
   emptyText: {
     fontSize: 14,
-    color: '#666',
-  },
-  appointmentCard: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  appointmentIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#E3F2FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  appointmentInfo: {
-    flex: 1,
-  },
-  appointmentTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  appointmentTime: {
-    fontSize: 14,
-    color: '#007AFF',
-    marginTop: 2,
-  },
-  appointmentLocation: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
+    color: NeutralColors.gray400,
   },
   tipCard: {
     flexDirection: 'row',
-    backgroundColor: '#FFF8E7',
+    backgroundColor: SemanticColors.warningLight,
     borderRadius: 12,
     padding: 16,
+    alignItems: 'center',
   },
   tipContent: {
     flex: 1,
@@ -412,12 +500,12 @@ const styles = StyleSheet.create({
   tipTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: NeutralColors.gray900,
     marginBottom: 4,
   },
   tipText: {
     fontSize: 14,
-    color: '#666',
+    color: NeutralColors.gray500,
     lineHeight: 20,
   },
 });

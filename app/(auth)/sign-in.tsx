@@ -1,14 +1,15 @@
+import { BrandColors, NeutralColors } from '@/constants/theme';
 import { Link } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useAuth } from '../../contexts/auth-context';
 
@@ -40,7 +41,7 @@ export default function SignInScreen() {
       style={styles.container}
     >
       <View style={styles.form}>
-        <Text style={styles.title}>Welcome Back</Text>
+        <Text style={styles.title}>Welcome</Text>
         <Text style={styles.subtitle}>
           Sign in to manage your fertility journey
         </Text>
@@ -48,6 +49,7 @@ export default function SignInScreen() {
         <TextInput
           style={styles.input}
           placeholder="Email"
+          placeholderTextColor={NeutralColors.gray300}
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -58,6 +60,7 @@ export default function SignInScreen() {
         <TextInput
           style={styles.input}
           placeholder="Password"
+          placeholderTextColor={NeutralColors.gray300}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -70,7 +73,7 @@ export default function SignInScreen() {
           disabled={loading}
         >
           <Text style={styles.buttonText}>
-            {loading ? 'Signing In...' : 'Sign In'}
+            {loading ? 'Signing in...' : 'Sign In'}
           </Text>
         </TouchableOpacity>
 
@@ -90,7 +93,7 @@ export default function SignInScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: NeutralColors.white,
   },
   form: {
     flex: 1,
@@ -101,23 +104,25 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     marginBottom: 8,
-    color: '#1a1a1a',
+    color: NeutralColors.gray900,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: NeutralColors.gray400,
     marginBottom: 32,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: NeutralColors.gray100,
+    backgroundColor: NeutralColors.gray50,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     fontSize: 16,
+    color: NeutralColors.gray900,
   },
   button: {
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.accent,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -138,11 +143,12 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: '#666',
+    color: NeutralColors.gray400,
   },
   link: {
     fontSize: 14,
-    color: '#007AFF',
+    color: BrandColors.primary,
     fontWeight: '600',
   },
 });
+
