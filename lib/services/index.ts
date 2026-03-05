@@ -5,5 +5,7 @@ export {
     MedicationService, type DosageWithEvents, type MedicationWithDosages
 } from './medication.service';
 export { MoodService, type MoodTrend } from './mood.service';
+export { NotificationService } from './notification.service';
 export { RBACService, type Role } from './rbac.service';
+export { UserProfileService, type UserProfile } from './user-profile.service';
 
