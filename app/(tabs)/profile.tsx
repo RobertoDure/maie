@@ -1,6 +1,12 @@
+import { AvatarPickerSheet } from '@/components/avatar-picker-sheet';
+import { ProfileAvatar } from '@/components/profile-avatar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { BrandColors, NeutralColors, SemanticColors, Shadows } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
-import React from 'react';
+import { UserProfileService } from '@/lib/services';
+import BottomSheet from '@gorhom/bottom-sheet';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Alert,
     ScrollView,
@@ -12,6 +18,60 @@ import {
 
 export default function ProfileScreen() {
   const { user, signOut, role } = useAuth();
+  const router = useRouter();
+  const sheetRef = useRef<BottomSheet>(null);
+
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarLoading, setAvatarLoading] = useState(false);
+
+  const loadAvatar = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const profile = await UserProfileService.getProfile(user.id);
+      setAvatarUrl(profile?.avatar_url ?? null);
+    } catch {
+      // silently fail — placeholder shown
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadAvatar();
+  }, [loadAvatar]);
+
+  const handleImageSelected = async (uri: string) => {
+    if (!user?.id) return;
+    try {
+      setAvatarLoading(true);
+      const publicUrl = await UserProfileService.uploadAvatar(user.id, uri);
+      setAvatarUrl(publicUrl);
+    } catch {
+      Alert.alert('Error', 'Failed to upload profile photo.');
+    } finally {
+      setAvatarLoading(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!user?.id) return;
+    Alert.alert('Remove Photo', 'Are you sure you want to remove your profile photo?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setAvatarLoading(true);
+            await UserProfileService.removeAvatar(user.id);
+            setAvatarUrl(null);
+          } catch {
+            Alert.alert('Error', 'Failed to remove profile photo.');
+          } finally {
+            setAvatarLoading(false);
+          }
+        },
+      },
+    ]);
+  };
 
   const handleSignOut = async () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -40,9 +100,14 @@ export default function ProfileScreen() {
       </View>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.profileCard}>
-          <View style={styles.avatarContainer}>
-            <IconSymbol name="person.fill" size={48} color="#007AFF" />
-          </View>
+          <ProfileAvatar
+            size={100}
+            uri={avatarUrl}
+            showEditButton
+            onEditPress={() => sheetRef.current?.expand()}
+            loading={avatarLoading}
+          />
+          <View style={{ height: 16 }} />
           <Text style={styles.name}>{user?.email}</Text>
           {role && (
             <View style={styles.roleBadge}>
@@ -53,35 +118,35 @@ export default function ProfileScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
-          <View style={styles.menuItem}>
-            <IconSymbol name="person" size={20} color="#666" />
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/personal-info')}>
+            <IconSymbol name="person" size={20} color={NeutralColors.gray400} />
             <Text style={styles.menuText}>Personal Information</Text>
-            <IconSymbol name="chevron.right" size={16} color="#ccc" />
-          </View>
-          <View style={styles.menuItem}>
-            <IconSymbol name="bell" size={20} color="#666" />
+            <IconSymbol name="chevron.right" size={16} color={NeutralColors.gray300} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/notifications')}>
+            <IconSymbol name="bell" size={20} color={NeutralColors.gray400} />
             <Text style={styles.menuText}>Notifications</Text>
-            <IconSymbol name="chevron.right" size={16} color="#ccc" />
-          </View>
-          <View style={styles.menuItem}>
-            <IconSymbol name="lock" size={20} color="#666" />
+            <IconSymbol name="chevron.right" size={16} color={NeutralColors.gray300} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/privacy-security')}>
+            <IconSymbol name="lock" size={20} color={NeutralColors.gray400} />
             <Text style={styles.menuText}>Privacy & Security</Text>
-            <IconSymbol name="chevron.right" size={16} color="#ccc" />
-          </View>
+            <IconSymbol name="chevron.right" size={16} color={NeutralColors.gray300} />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Support</Text>
-          <View style={styles.menuItem}>
-            <IconSymbol name="questionmark.circle" size={20} color="#666" />
+          <TouchableOpacity style={styles.menuItem}>
+            <IconSymbol name="questionmark.circle" size={20} color={NeutralColors.gray400} />
             <Text style={styles.menuText}>Help Center</Text>
-            <IconSymbol name="chevron.right" size={16} color="#ccc" />
-          </View>
-          <View style={styles.menuItem}>
-            <IconSymbol name="bubble.left.and.bubble.right" size={20} color="#666" />
+            <IconSymbol name="chevron.right" size={16} color={NeutralColors.gray300} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem}>
+            <IconSymbol name="bubble.left.and.bubble.right" size={20} color={NeutralColors.gray400} />
             <Text style={styles.menuText}>Contact Support</Text>
-            <IconSymbol name="chevron.right" size={16} color="#ccc" />
-          </View>
+            <IconSymbol name="chevron.right" size={16} color={NeutralColors.gray300} />
+          </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
@@ -90,6 +155,13 @@ export default function ProfileScreen() {
 
         <Text style={styles.version}>Version 1.0.0</Text>
       </ScrollView>
+
+      <AvatarPickerSheet
+        ref={sheetRef}
+        onImageSelected={handleImageSelected}
+        onRemovePhoto={handleRemovePhoto}
+        hasExistingAvatar={!!avatarUrl}
+      />
     </View>
   );
 }
@@ -97,45 +169,39 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: NeutralColors.gray50,
   },
   header: {
     padding: 20,
     paddingTop: 60,
-    backgroundColor: '#fff',
+    backgroundColor: NeutralColors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: NeutralColors.gray100,
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
+    color: NeutralColors.gray900,
   },
   content: {
     padding: 20,
   },
   profileCard: {
-    backgroundColor: '#fff',
+    backgroundColor: NeutralColors.white,
     borderRadius: 12,
     padding: 24,
     alignItems: 'center',
     marginBottom: 24,
-  },
-  avatarContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#E3F2FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
+    ...Shadows.md,
   },
   name: {
     fontSize: 20,
     fontWeight: '600',
     marginBottom: 8,
+    color: NeutralColors.gray900,
   },
   roleBadge: {
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.accent,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
@@ -152,24 +218,25 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 12,
-    color: '#333',
+    color: NeutralColors.gray900,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: NeutralColors.white,
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
+    ...Shadows.sm,
   },
   menuText: {
     flex: 1,
     fontSize: 16,
     marginLeft: 12,
-    color: '#333',
+    color: NeutralColors.gray900,
   },
   signOutButton: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: SemanticColors.error,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -182,8 +249,9 @@ const styles = StyleSheet.create({
   },
   version: {
     textAlign: 'center',
-    color: '#999',
+    color: NeutralColors.gray400,
     fontSize: 14,
     marginTop: 24,
   },
 });
+

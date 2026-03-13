@@ -1,21 +1,22 @@
 import { AppointmentCard } from '@/components/appointment-card';
 import { Calendar } from '@/components/calendar';
+import { ProfileAvatar } from '@/components/profile-avatar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { BrandColors, NeutralColors, SemanticColors, Shadows } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { Database } from '@/lib/database.types';
-import { CycleService, MedicationService, MoodService } from '@/lib/services';
+import { CycleService, MedicationService, MoodService, UserProfileService } from '@/lib/services';
 import { AppointmentService } from '@/lib/services/appointment.service';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 const getCycleDay = (startDate: string) => {
@@ -42,6 +43,7 @@ export default function DashboardScreen() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [monthAppointments, setMonthAppointments] = useState<Appointment[]>([]);
   const [dayAppointments, setDayAppointments] = useState<Appointment[]>([]);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const loadDashboardData = async () => {
     if (!user) return;
@@ -52,16 +54,18 @@ export default function DashboardScreen() {
       const startDate = new Date(year, month, 1);
       const endDate = new Date(year, month + 1, 0, 23, 59, 59);
 
-      const [cycles, todayCheckin, monthApts] = await Promise.all([
+      const [cycles, todayCheckin, monthApts, profile] = await Promise.all([
         CycleService.getCycles(user.id),
         MoodService.hasTodayCheckin(user.id),
         AppointmentService.getAppointmentsByDateRange(user.id, startDate, endDate),
+        UserProfileService.getProfile(user.id),
       ]);
 
       const active = cycles.find((c) => c.status === 'active') || cycles[0] || null;
       setActiveCycle(active);
       setHasTodayCheckin(todayCheckin);
       setMonthAppointments(monthApts);
+      setAvatarUrl(profile?.avatar_url ?? null);
 
       if (active) {
         const meds = await MedicationService.getMedications(user.id, active.id);
@@ -144,13 +148,11 @@ export default function DashboardScreen() {
       {/* New User Profile Header */}
       <View style={styles.header}>
         <View style={styles.profileSection}>
-          <View style={styles.avatarContainer}>
-            <IconSymbol name="person.fill" size={24} color="#fff" />
-          </View>
+          <ProfileAvatar size={48} uri={avatarUrl} />
           <View>
             <Text style={styles.greetingLabel}>Hello</Text>
             <Text style={styles.userName}>
-              {user?.user_metadata?.full_name?.split(' ')[0] || 'Roberto!'}
+              {user?.user_metadata?.full_name?.split(' ')[0]}!
             </Text>
           </View>
         </View>
@@ -167,10 +169,16 @@ export default function DashboardScreen() {
       >
         {/* Calendar - FIRST COMPONENT */}
         <View style={styles.calendarContainer}>
+          <Text style={styles.selectedDateLabel}>
+            {selectedDate.toLocaleDateString('en-US', {
+              weekday: 'long',
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric',
+            })}
+          </Text>
           {activeCycle && activeCycle.start_date && (
             <View style={styles.cycleDayContainer}>
-              <Text style={styles.cycleDayLabel}>Day</Text>
-              <Text style={styles.cycleDayValue}>{getCycleDay(activeCycle.start_date)}</Text>
             </View>
           )}
           <Calendar
@@ -203,7 +211,14 @@ export default function DashboardScreen() {
             </View>
           ) : (
             dayAppointments.map((apt) => (
-              <AppointmentCard key={apt.id} appointment={apt} />
+              <AppointmentCard
+                key={apt.id}
+                appointment={apt}
+                onPress={activeCycle
+                  ? () => router.push(`/cycle/${activeCycle.id}/appointments` as any)
+                  : undefined
+                }
+              />
             ))
           )}
         </View>
@@ -313,14 +328,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  avatarContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: BrandColors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   greetingLabel: {
     fontSize: 14,
     color: NeutralColors.gray400,
@@ -350,6 +357,13 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     marginTop: 0,
     alignItems: 'center', // Center the cycle day
+  },
+  selectedDateLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: NeutralColors.gray900,
+    marginBottom: 12,
+    textAlign: 'center',
   },
   cycleDayContainer: {
     alignItems: 'center',

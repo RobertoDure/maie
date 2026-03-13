@@ -46,16 +46,18 @@ export class AppointmentService {
     ): Promise<Appointment[]> {
         try {
             // Get all cycles for user
-            const { data: cycles } = await supabase
+            const { data } = await supabase
                 .from('cycles')
                 .select('id')
                 .eq('patient_id', userId);
+
+            const cycles = data as { id: string }[] | null;
 
             const cycleIds = cycles?.map((c) => c.id) || [];
 
             if (cycleIds.length === 0) return [];
 
-            const { data, error } = await supabase
+            const { data: appointments, error } = await supabase
                 .from('appointments')
                 .select('*')
                 .in('cycle_id', cycleIds)
@@ -65,11 +67,65 @@ export class AppointmentService {
 
             if (error) throw error;
 
-            return data || [];
+            return appointments || [];
         } catch (error) {
             console.error('Error fetching upcoming appointments:', error);
             throw error;
         }
+    }
+
+    /**
+     * Get all appointments for a user within a date range (for calendar display)
+     */
+    static async getAppointmentsByDateRange(
+        userId: string,
+        startDate: Date,
+        endDate: Date
+    ): Promise<Appointment[]> {
+        try {
+            // Get all cycles for user
+            const { data } = await supabase
+                .from('cycles')
+                .select('id')
+                .eq('patient_id', userId);
+
+            const cycles = data as { id: string }[] | null;
+
+            const cycleIds = cycles?.map((c) => c.id) || [];
+
+            if (cycleIds.length === 0) return [];
+
+            const { data: appointments, error } = await supabase
+                .from('appointments')
+                .select('*')
+                .in('cycle_id', cycleIds)
+                .gte('scheduled_at', startDate.toISOString())
+                .lte('scheduled_at', endDate.toISOString())
+                .order('scheduled_at', { ascending: true });
+
+            if (error) throw error;
+
+            return appointments || [];
+        } catch (error) {
+            console.error('Error fetching appointments by date range:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get appointments for a specific date
+     */
+    static async getAppointmentsByDate(
+        userId: string,
+        date: Date
+    ): Promise<Appointment[]> {
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        return this.getAppointmentsByDateRange(userId, startOfDay, endOfDay);
     }
 
     /**

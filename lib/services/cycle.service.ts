@@ -131,7 +131,7 @@ export class CycleService {
   }
 
   /**
-   * Delete a cycle
+   * Delete a cycle and all related data (cascade)
    */
   static async deleteCycle(userId: string, cycleId: string): Promise<void> {
     try {
@@ -146,6 +146,45 @@ export class CycleService {
         throw new Error('Only the patient can delete their cycle');
       }
 
+      // Delete medication_events via dosages for medications in this cycle
+      const { data: medications } = await supabase
+        .from('medications')
+        .select('id')
+        .eq('cycle_id', cycleId);
+
+      if (medications && medications.length > 0) {
+        const medicationIds = medications.map((m) => m.id);
+
+        const { data: dosages } = await supabase
+          .from('medication_dosages')
+          .select('id')
+          .in('medication_id', medicationIds);
+
+        if (dosages && dosages.length > 0) {
+          const dosageIds = dosages.map((d) => d.id);
+          await supabase
+            .from('medication_events')
+            .delete()
+            .in('dosage_id', dosageIds);
+        }
+
+        await supabase
+          .from('medication_dosages')
+          .delete()
+          .in('medication_id', medicationIds);
+      }
+
+      // Delete all direct cycle-related records in parallel
+      await Promise.all([
+        supabase.from('medications').delete().eq('cycle_id', cycleId),
+        supabase.from('appointments').delete().eq('cycle_id', cycleId),
+        supabase.from('cycle_phases').delete().eq('cycle_id', cycleId),
+        supabase.from('mood_checkins').delete().eq('cycle_id', cycleId),
+        supabase.from('symptom_logs').delete().eq('cycle_id', cycleId),
+        supabase.from('shared_access').delete().eq('cycle_id', cycleId),
+      ]);
+
+      // Finally delete the cycle itself
       const { error } = await supabase.from('cycles').delete().eq('id', cycleId);
 
       if (error) throw error;

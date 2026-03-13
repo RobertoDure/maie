@@ -1,4 +1,5 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { BrandColors, NeutralColors, Radius, SemanticColors, Shadows, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { Database } from '@/lib/database.types';
 import { CycleService } from '@/lib/services';
@@ -24,7 +25,7 @@ export default function CyclesScreen() {
 
   const loadCycles = async () => {
     if (!user) return;
-    
+
     try {
       const data = await CycleService.getCycles(user.id);
       setCycles(data);
@@ -48,15 +49,15 @@ export default function CyclesScreen() {
   const getStatusColor = (status: string | null) => {
     switch (status) {
       case 'active':
-        return '#34C759';
+        return SemanticColors.success;
       case 'planned':
-        return '#007AFF';
+        return BrandColors.primary;
       case 'completed':
-        return '#8E8E93';
+        return NeutralColors.gray400;
       case 'cancelled':
-        return '#FF3B30';
+        return SemanticColors.error;
       default:
-        return '#8E8E93';
+        return NeutralColors.gray400;
     }
   };
 
@@ -71,31 +72,52 @@ export default function CyclesScreen() {
 
   const renderCycleItem = ({ item }: { item: Cycle }) => (
     <Link href={`/cycle/${item.id}`} asChild>
-      <TouchableOpacity style={styles.cycleCard}>
-        <View style={styles.cycleHeader}>
-          <View>
-            <Text style={styles.cycleType}>{item.cycle_type || 'Unknown'}</Text>
-            <Text style={styles.cycleClinic}>{item.clinic_name || 'No clinic'}</Text>
+      <TouchableOpacity style={styles.cycleCard} activeOpacity={0.7}>
+        {/* Left accent border — color based on status */}
+        <View style={[styles.accentBorder, { backgroundColor: getStatusColor(item.status) }]} />
+
+        <View style={styles.cardContent}>
+          {/* Header: icon + title + status badge */}
+          <View style={styles.cardHeader}>
+            <View style={[styles.iconContainer, { backgroundColor: getStatusColor(item.status) + '15' }]}>
+              <IconSymbol name="heart.circle" size={20} color={getStatusColor(item.status)} />
+            </View>
+            <View style={styles.headerInfo}>
+              <Text style={styles.cycleType} numberOfLines={1}>{item.cycle_type || 'Unknown'}</Text>
+              {item.clinic_name && (
+                <View style={styles.clinicBadge}>
+                  <Text style={styles.clinicBadgeText}>{item.clinic_name}</Text>
+                </View>
+              )}
+            </View>
+            <View
+              style={[
+                styles.statusBadge,
+                { backgroundColor: getStatusColor(item.status) },
+              ]}
+            >
+              <Text style={styles.statusText}>
+                {item.status?.toUpperCase() || 'UNKNOWN'}
+              </Text>
+            </View>
           </View>
-          <View
-            style={[
-              styles.statusBadge,
-              { backgroundColor: getStatusColor(item.status) },
-            ]}
-          >
-            <Text style={styles.statusText}>
-              {item.status?.toUpperCase() || 'UNKNOWN'}
-            </Text>
+
+          {/* Details */}
+          <View style={styles.details}>
+            <View style={styles.detailRow}>
+              <IconSymbol name="calendar" size={14} color={BrandColors.accent} />
+              <Text style={styles.dateText}>
+                {formatDate(item.start_date)} – {formatDate(item.end_date)}
+              </Text>
+            </View>
+            {item.protocol_name && (
+              <View style={styles.detailRow}>
+                <IconSymbol name="doc.text" size={14} color={NeutralColors.gray400} />
+                <Text style={styles.protocolText}>{item.protocol_name}</Text>
+              </View>
+            )}
           </View>
         </View>
-        <View style={styles.cycleDates}>
-          <Text style={styles.dateText}>
-            {formatDate(item.start_date)} - {formatDate(item.end_date)}
-          </Text>
-        </View>
-        {item.protocol_name && (
-          <Text style={styles.protocolText}>Protocol: {item.protocol_name}</Text>
-        )}
       </TouchableOpacity>
     </Link>
   );
@@ -103,7 +125,7 @@ export default function CyclesScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <Text>Loading cycles...</Text>
+        <Text style={styles.loadingText}>Loading cycles...</Text>
       </View>
     );
   }
@@ -121,7 +143,7 @@ export default function CyclesScreen() {
 
       {cycles.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <IconSymbol name="calendar" size={64} color="#ccc" />
+          <IconSymbol name="calendar" size={64} color={NeutralColors.gray300} />
           <Text style={styles.emptyText}>No cycles yet</Text>
           <Text style={styles.emptySubtext}>
             Start tracking your fertility journey
@@ -139,7 +161,11 @@ export default function CyclesScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={BrandColors.primary}
+            />
           }
         />
       )}
@@ -150,29 +176,35 @@ export default function CyclesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: NeutralColors.gray50,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: NeutralColors.gray50,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: NeutralColors.gray400,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: Spacing.xl,
     paddingTop: 60,
-    backgroundColor: '#fff',
+    backgroundColor: NeutralColors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: NeutralColors.gray100,
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
+    color: NeutralColors.gray900,
   },
   addButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.accent,
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -180,83 +212,114 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   listContainer: {
-    padding: 16,
+    padding: Spacing.lg,
   },
   cycleCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cycleHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
+    backgroundColor: NeutralColors.white,
+    borderRadius: Radius.md,
+    marginBottom: Spacing.md,
+    overflow: 'hidden',
+    ...Shadows.md,
+  },
+  accentBorder: {
+    width: 4,
+    borderTopLeftRadius: Radius.md,
+    borderBottomLeftRadius: Radius.md,
+  },
+  cardContent: {
+    flex: 1,
+    padding: Spacing.lg,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.xl,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+  },
+  headerInfo: {
+    flex: 1,
   },
   cycleType: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+    color: NeutralColors.gray900,
+    marginBottom: 2,
   },
-  cycleClinic: {
-    fontSize: 14,
-    color: '#666',
+  clinicBadge: {
+    backgroundColor: NeutralColors.gray400 + '15',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radius.sm,
+    alignSelf: 'flex-start',
+  },
+  clinicBadgeText: {
+    fontSize: 12,
+    color: NeutralColors.gray400,
+    fontWeight: '500',
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: Radius.sm,
+    marginLeft: Spacing.sm,
   },
   statusText: {
-    color: '#fff',
-    fontSize: 12,
+    color: NeutralColors.white,
+    fontSize: 11,
     fontWeight: '600',
   },
-  cycleDates: {
-    marginTop: 8,
+  details: {
+    marginTop: Spacing.md,
+    gap: Spacing.sm,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
   },
   dateText: {
     fontSize: 14,
-    color: '#666',
+    fontWeight: '500',
+    color: BrandColors.accent,
   },
   protocolText: {
-    fontSize: 14,
-    color: '#007AFF',
-    marginTop: 8,
+    fontSize: 13,
+    color: NeutralColors.gray400,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
+    padding: Spacing.xxxl,
   },
   emptyText: {
     fontSize: 24,
     fontWeight: '600',
-    marginTop: 16,
-    color: '#333',
+    marginTop: Spacing.lg,
+    color: NeutralColors.gray900,
   },
   emptySubtext: {
     fontSize: 16,
-    color: '#666',
-    marginTop: 8,
+    color: NeutralColors.gray400,
+    marginTop: Spacing.sm,
     textAlign: 'center',
   },
   createButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginTop: 24,
+    backgroundColor: BrandColors.accent,
+    paddingHorizontal: Spacing.xxl,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.md,
+    marginTop: Spacing.xxl,
   },
   createButtonText: {
-    color: '#fff',
+    color: NeutralColors.white,
     fontSize: 16,
     fontWeight: '600',
   },

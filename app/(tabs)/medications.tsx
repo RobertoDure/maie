@@ -1,5 +1,13 @@
 import { MedicationCard } from '@/components/medication-card';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import {
+    BrandColors,
+    NeutralColors,
+    Radius,
+    SemanticColors,
+    Shadows,
+    Spacing,
+} from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { Database } from '@/lib/database.types';
 import { CycleService } from '@/lib/services/cycle.service';
@@ -9,18 +17,18 @@ import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Modal,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Modal,
+    Platform,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 type Cycle = Database['public']['Tables']['cycles']['Row'];
@@ -217,12 +225,12 @@ export default function MedicationsScreen() {
         medicationId = newMedication.id;
       }
 
-      // Handle Dosage
-      const timeString = dosageTime.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      });
+      // Handle Dosage — use deterministic HH:mm format (toLocaleTimeString
+      // is locale/Hermes-dependent and can produce formats like "08.30" that
+      // break the notification scheduler's split(':') parsing).
+      const hh = String(dosageTime.getHours()).padStart(2, '0');
+      const mm = String(dosageTime.getMinutes()).padStart(2, '0');
+      const timeString = `${hh}:${mm}`;
 
       if (editingDosageId) {
         // Update existing dosage
@@ -244,6 +252,15 @@ export default function MedicationsScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       await loadMedications();
+
+      // Reschedule medication reminders to reflect changes
+      import('@/lib/services/notification.service')
+        .then(({ NotificationService }) =>
+          NotificationService.scheduleAllMedicationReminders(user.id)
+        )
+        .catch((e) =>
+          console.error('[Medications] Failed to reschedule reminders:', e)
+        );
 
       if (mode === 'edit' && editingMedicationId) {
         // If editing, return to view mode with updated data
@@ -290,7 +307,7 @@ export default function MedicationsScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={BrandColors.primary} />
       </View>
     );
   }
@@ -304,7 +321,7 @@ export default function MedicationsScreen() {
             style={styles.addButton}
             onPress={handleAdd}
           >
-            <IconSymbol name="plus" size={24} color="#fff" />
+            <IconSymbol name="plus" size={24} color={NeutralColors.white} />
           </TouchableOpacity>
         )}
       </View>
@@ -341,7 +358,7 @@ export default function MedicationsScreen() {
 
       {cycles.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <IconSymbol name="pills" size={64} color="#ccc" />
+          <IconSymbol name="pills" size={64} color={NeutralColors.gray200} />
           <Text style={styles.emptyText}>No active cycles</Text>
           <Text style={styles.emptySubtext}>
             Create a cycle first to add medications
@@ -355,7 +372,7 @@ export default function MedicationsScreen() {
         </View>
       ) : medications.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <IconSymbol name="pills" size={64} color="#ccc" />
+          <IconSymbol name="pills" size={64} color={NeutralColors.gray200} />
           <Text style={styles.emptyText}>No medications</Text>
           <Text style={styles.emptySubtext}>
             Add medications to track for this cycle
@@ -419,62 +436,88 @@ export default function MedicationsScreen() {
 
           {mode === 'view' && viewingMedication ? (
             <ScrollView style={styles.form}>
-              <View style={styles.viewSection}>
-                <View style={styles.viewHeader}>
-                  <View style={styles.viewIconContainer}>
-                    <IconSymbol
-                      name={getRouteIcon(viewingMedication.route)}
-                      size={40}
-                      color="#FF9500"
-                    />
+              {/* Header card */}
+              <View style={styles.viewCard}>
+                <View style={[styles.viewCardAccent, { backgroundColor: SemanticColors.warning }]} />
+                <View style={styles.viewCardBody}>
+                  <View style={styles.viewCardTitleRow}>
+                    <View style={styles.viewIconContainer}>
+                      <IconSymbol
+                        name={getRouteIcon(viewingMedication.route)}
+                        size={24}
+                        color={SemanticColors.warning}
+                      />
+                    </View>
+                    <View style={styles.viewTitleContainer}>
+                      <Text style={styles.viewTitle}>{viewingMedication.name}</Text>
+                      {viewingMedication.route && (
+                        <View style={styles.viewRouteBadge}>
+                          <Text style={styles.viewRouteText}>{viewingMedication.route}</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
-                  <View style={styles.viewTitleContainer}>
-                    <Text style={styles.viewTitle}>{viewingMedication.name}</Text>
-                    {viewingMedication.route && (
-                      <Text style={styles.viewRoute}>{viewingMedication.route}</Text>
-                    )}
-                  </View>
+
+                  {viewingMedication.purpose && (
+                    <View style={styles.viewDetailRow}>
+                      <IconSymbol name="info.circle" size={15} color={NeutralColors.gray400} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.viewDetailLabel}>Purpose</Text>
+                        <Text style={styles.viewDetailValue}>{viewingMedication.purpose}</Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
+              </View>
 
-                {viewingMedication.purpose && (
-                  <View style={styles.viewRow}>
-                    <Text style={styles.viewLabel}>Purpose</Text>
-                    <Text style={styles.viewValue}>{viewingMedication.purpose}</Text>
-                  </View>
-                )}
-
-                <View style={styles.divider} />
-                <Text style={styles.sectionTitle}>Dosage</Text>
-
-                {viewingMedication.medication_dosages?.map((dosage, index) => (
-                  <View key={dosage.id} style={styles.viewDosageCard}>
-                    <View style={styles.viewDosageRow}>
-                      <Text style={styles.viewLabel}>Amount</Text>
-                      <Text style={styles.viewValue}>{dosage.dosage_amount} {dosage.dosage_unit}</Text>
+              {/* Dosage card */}
+              <View style={styles.viewCard}>
+                <View style={[styles.viewCardAccent, { backgroundColor: BrandColors.accent }]} />
+                <View style={styles.viewCardBody}>
+                  <View style={styles.viewCardTitleRow}>
+                    <View style={[styles.viewIconContainer, { backgroundColor: BrandColors.accent + '12' }]}>
+                      <IconSymbol name="clock" size={20} color={BrandColors.accent} />
                     </View>
-                    <View style={styles.viewDosageRow}>
-                      <Text style={styles.viewLabel}>Time</Text>
-                      <Text style={styles.viewValue}>
-                        {dosage.time_of_day ? new Date(`2000-01-01T${dosage.time_of_day}`).toLocaleTimeString([], {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                        }) : 'No time set'}
-                      </Text>
-                    </View>
+                    <Text style={styles.viewCardTitle}>Dosage</Text>
                   </View>
-                ))}
 
-                {viewingMedication.instructions && (
-                  <>
-                    <View style={styles.divider} />
-                    <Text style={styles.sectionTitle}>Instructions</Text>
+                  {viewingMedication.medication_dosages?.map((dosage) => (
+                    <View key={dosage.id} style={styles.viewDosageCard}>
+                      <View style={styles.viewDosageRow}>
+                        <Text style={styles.viewDosageLabel}>Amount</Text>
+                        <Text style={styles.viewDosageValue}>{dosage.dosage_amount} {dosage.dosage_unit}</Text>
+                      </View>
+                      <View style={styles.viewDosageRow}>
+                        <Text style={styles.viewDosageLabel}>Time</Text>
+                        <Text style={[styles.viewDosageValue, { color: BrandColors.accent }]}>
+                          {dosage.time_of_day ? new Date(`2000-01-01T${dosage.time_of_day}`).toLocaleTimeString([], {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          }) : 'No time set'}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              {/* Instructions card */}
+              {viewingMedication.instructions && (
+                <View style={styles.viewCard}>
+                  <View style={[styles.viewCardAccent, { backgroundColor: BrandColors.primary }]} />
+                  <View style={styles.viewCardBody}>
+                    <View style={styles.viewCardTitleRow}>
+                      <View style={[styles.viewIconContainer, { backgroundColor: BrandColors.primary + '12' }]}>
+                        <IconSymbol name="doc.text" size={20} color={BrandColors.primary} />
+                      </View>
+                      <Text style={styles.viewCardTitle}>Instructions</Text>
+                    </View>
                     <View style={styles.instructionBox}>
-                      <IconSymbol name="info.circle" size={20} color="#666" />
                       <Text style={styles.instructionText}>{viewingMedication.instructions}</Text>
                     </View>
-                  </>
-                )}
-              </View>
+                  </View>
+                </View>
+              )}
               <View style={{ height: 40 }} />
             </ScrollView>
           ) : (
@@ -569,7 +612,7 @@ export default function MedicationsScreen() {
                     {dosageTime.toLocaleTimeString([], {
                       hour: '2-digit',
                       minute: '2-digit',
-                      hour12: false
+                      hour12: true
                     })}
                   </Text>
                 </TouchableOpacity>
@@ -580,7 +623,9 @@ export default function MedicationsScreen() {
                   <DateTimePicker
                     value={dosageTime}
                     mode="time"
+                    is24Hour={false}
                     display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    textColor={NeutralColors.gray900}
                     onChange={(event, date) => {
                       if (Platform.OS === 'android') {
                         setShowDatePicker(false);
@@ -618,29 +663,31 @@ export default function MedicationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: NeutralColors.gray50,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: NeutralColors.gray50,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: Spacing.xl,
     paddingTop: 60,
-    backgroundColor: '#fff',
+    backgroundColor: NeutralColors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: NeutralColors.gray100,
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
+    color: NeutralColors.gray900,
   },
   addButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.accent,
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -648,133 +695,139 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cycleSelector: {
-    backgroundColor: '#fff',
+    backgroundColor: NeutralColors.white,
     maxHeight: 60,
   },
   cycleSelectorContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 8,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    gap: Spacing.sm,
   },
   cycleChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-    marginRight: 8,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.full,
+    backgroundColor: NeutralColors.gray50,
+    marginRight: Spacing.sm,
+    borderWidth: 1,
+    borderColor: NeutralColors.gray100,
   },
   cycleChipSelected: {
-    backgroundColor: '#007AFF',
+    backgroundColor: BrandColors.primary,
+    borderColor: BrandColors.primary,
   },
   cycleChipText: {
     fontSize: 14,
-    color: '#666',
+    color: NeutralColors.gray400,
   },
   cycleChipTextSelected: {
-    color: '#fff',
+    color: NeutralColors.white,
     fontWeight: '600',
   },
   listContainer: {
-    padding: 16,
+    padding: Spacing.lg,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
+    padding: Spacing.xxxl,
   },
   emptyText: {
     fontSize: 24,
     fontWeight: '600',
-    marginTop: 16,
-    color: '#333',
+    marginTop: Spacing.lg,
+    color: NeutralColors.gray900,
   },
   emptySubtext: {
     fontSize: 16,
-    color: '#666',
-    marginTop: 8,
+    color: NeutralColors.gray400,
+    marginTop: Spacing.sm,
     textAlign: 'center',
   },
   createButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginTop: 24,
+    backgroundColor: BrandColors.accent,
+    paddingHorizontal: Spacing.xxl,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.md,
+    marginTop: Spacing.xxl,
   },
   createButtonText: {
-    color: '#fff',
+    color: NeutralColors.white,
     fontSize: 16,
     fontWeight: '600',
   },
   createCycleButton: {
-    backgroundColor: '#FF9500',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginTop: 24,
+    backgroundColor: SemanticColors.warning,
+    paddingHorizontal: Spacing.xxl,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.md,
+    marginTop: Spacing.xxl,
   },
   createCycleButtonText: {
-    color: '#fff',
+    color: NeutralColors.white,
     fontSize: 16,
     fontWeight: '600',
   },
+  // Modal
   modalContainer: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: NeutralColors.gray50,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: Spacing.xl,
     paddingTop: 60,
-    backgroundColor: '#fff',
+    backgroundColor: NeutralColors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: NeutralColors.gray100,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
+    color: NeutralColors.gray900,
   },
   cancelText: {
     fontSize: 16,
-    color: '#666',
+    color: NeutralColors.gray400,
   },
   saveText: {
     fontSize: 16,
-    color: '#007AFF',
+    color: BrandColors.primary,
     fontWeight: '600',
   },
   disabledText: {
     opacity: 0.5,
   },
   form: {
-    padding: 20,
+    padding: Spacing.xl,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#666',
-    marginTop: 16,
-    marginBottom: 8,
+    color: NeutralColors.gray400,
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.sm,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-    marginTop: 8,
+    color: NeutralColors.gray900,
+    marginBottom: Spacing.sm,
+    marginTop: Spacing.sm,
   },
   input: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: NeutralColors.white,
+    borderRadius: Radius.sm,
+    padding: Spacing.lg,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: NeutralColors.gray100,
+    color: NeutralColors.gray900,
   },
   instructionsInput: {
     minHeight: 80,
@@ -783,30 +836,31 @@ const styles = StyleSheet.create({
   routeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: Spacing.sm,
   },
   routeButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: '#fff',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.full,
+    backgroundColor: NeutralColors.white,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: NeutralColors.gray100,
   },
   routeButtonSelected: {
-    backgroundColor: '#FF9500',
-    borderColor: '#FF9500',
+    backgroundColor: SemanticColors.warning,
+    borderColor: SemanticColors.warning,
   },
   routeButtonText: {
     fontSize: 14,
-    color: '#333',
+    color: NeutralColors.gray900,
   },
   routeButtonTextSelected: {
-    color: '#fff',
+    color: NeutralColors.white,
+    fontWeight: '600',
   },
   row: {
     flexDirection: 'row',
-    gap: 16,
+    gap: Spacing.lg,
   },
   flex1: {
     flex: 1,
@@ -815,126 +869,168 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   unitButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#fff',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.sm,
+    backgroundColor: NeutralColors.white,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    marginRight: 8,
+    borderColor: NeutralColors.gray100,
+    marginRight: Spacing.sm,
   },
   unitButtonSelected: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: BrandColors.primary,
+    borderColor: BrandColors.primary,
   },
   unitButtonText: {
     fontSize: 14,
-    color: '#333',
+    color: NeutralColors.gray900,
   },
   unitButtonTextSelected: {
-    color: '#fff',
+    color: NeutralColors.white,
   },
   datePickerContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 4,
+    backgroundColor: NeutralColors.white,
+    borderRadius: Radius.md,
+    padding: Spacing.sm,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    alignItems: 'flex-start',
+    borderColor: NeutralColors.gray100,
+    alignItems: 'center',
+    minHeight: 160,
+    justifyContent: 'center',
   },
   datePicker: {
     alignSelf: 'stretch',
+    height: 150,
   },
   divider: {
     height: 1,
-    backgroundColor: '#e0e0e0',
-    marginVertical: 24,
+    backgroundColor: NeutralColors.gray100,
+    marginVertical: Spacing.xxl,
   },
   dateButton: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: NeutralColors.white,
+    borderRadius: Radius.sm,
+    padding: Spacing.lg,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: NeutralColors.gray100,
     alignItems: 'center',
   },
   dateButtonText: {
     fontSize: 16,
-    color: '#333',
+    color: NeutralColors.gray900,
   },
-  // View Mode Styles
-  viewSection: {
-    padding: 0,
+  // View Mode — card pattern
+  viewCard: {
+    flexDirection: 'row',
+    backgroundColor: NeutralColors.white,
+    borderRadius: Radius.md,
+    marginBottom: Spacing.lg,
+    overflow: 'hidden',
+    ...Shadows.md,
   },
-  viewHeader: {
+  viewCardAccent: {
+    width: 4,
+    borderTopLeftRadius: Radius.md,
+    borderBottomLeftRadius: Radius.md,
+  },
+  viewCardBody: {
+    flex: 1,
+    padding: Spacing.lg,
+  },
+  viewCardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: Spacing.md,
+  },
+  viewCardTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: NeutralColors.gray900,
   },
   viewIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#FFF3E0',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: SemanticColors.warningLight,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: Spacing.md,
   },
   viewTitleContainer: {
     flex: 1,
   },
   viewTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 20,
+    fontWeight: '700',
+    color: NeutralColors.gray900,
   },
-  viewRoute: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 4,
+  viewRouteBadge: {
+    backgroundColor: SemanticColors.warning + '15',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radius.sm,
+    alignSelf: 'flex-start',
+    marginTop: Spacing.xs,
+  },
+  viewRouteText: {
+    fontSize: 12,
+    color: SemanticColors.warning,
+    fontWeight: '500',
     textTransform: 'capitalize',
   },
-  viewRow: {
-    marginBottom: 16,
+  viewDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: NeutralColors.gray100,
   },
-  viewLabel: {
-    fontSize: 14,
-    color: '#999',
-    marginBottom: 4,
+  viewDetailLabel: {
+    fontSize: 12,
+    color: NeutralColors.gray400,
+    fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    fontWeight: '600',
+    marginBottom: 2,
   },
-  viewValue: {
-    fontSize: 16,
-    color: '#333',
-    lineHeight: 24,
+  viewDetailValue: {
+    fontSize: 15,
+    color: NeutralColors.gray900,
+    lineHeight: 22,
   },
   viewDosageCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    marginBottom: 12,
+    backgroundColor: NeutralColors.gray50,
+    borderRadius: Radius.sm,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   viewDosageRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: Spacing.xs,
+  },
+  viewDosageLabel: {
+    fontSize: 13,
+    color: NeutralColors.gray400,
+    fontWeight: '500',
+  },
+  viewDosageValue: {
+    fontSize: 15,
+    color: NeutralColors.gray900,
+    fontWeight: '500',
   },
   instructionBox: {
-    flexDirection: 'row',
-    backgroundColor: '#F2F2F7',
-    padding: 16,
-    borderRadius: 12,
-    gap: 12,
+    backgroundColor: NeutralColors.gray50,
+    padding: Spacing.lg,
+    borderRadius: Radius.sm,
   },
   instructionText: {
     flex: 1,
     fontSize: 15,
-    color: '#333',
+    color: NeutralColors.gray900,
     lineHeight: 22,
   },
 });

@@ -1,4 +1,5 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { BrandColors, NeutralColors, Radius, SemanticColors, Shadows, Spacing } from '@/constants/theme';
 import { Database } from '@/lib/database.types';
 import * as Haptics from 'expo-haptics';
 import React from 'react';
@@ -68,194 +69,236 @@ export function MedicationCard({
             onPress={onPress}
             activeOpacity={0.7}
         >
-            <View style={styles.header}>
-                <View style={styles.iconContainer}>
-                    <IconSymbol
-                        name={getRouteIcon(medication.route)}
-                        size={24}
-                        color="#FF9500"
-                    />
+            {/* Left accent border */}
+            <View style={styles.accentBorder} />
+
+            <View style={styles.content}>
+                {/* Header row: icon + name + actions */}
+                <View style={styles.header}>
+                    <View style={styles.iconContainer}>
+                        <IconSymbol
+                            name={getRouteIcon(medication.route)}
+                            size={20}
+                            color={SemanticColors.warning}
+                        />
+                    </View>
+                    <View style={styles.headerInfo}>
+                        <Text style={styles.name} numberOfLines={1}>{medication.name}</Text>
+                        {medication.route && (
+                            <View style={styles.routeBadge}>
+                                <Text style={styles.routeText}>{medication.route}</Text>
+                            </View>
+                        )}
+                    </View>
+                    {/* <View style={styles.actions}>
+                        {onEdit && (
+                            <TouchableOpacity onPress={onEdit} hitSlop={12} style={styles.actionButton}>
+                                <IconSymbol name="pencil" size={18} color={BrandColors.primary} />
+                            </TouchableOpacity>
+                        )}
+                    </View> */}
                 </View>
-                <View style={styles.headerInfo}>
-                    <Text style={styles.name}>{medication.name}</Text>
-                    {medication.route && (
-                        <Text style={styles.route}>{medication.route}</Text>
-                    )}
-                </View>
+
+                {/* Purpose */}
+                {medication.purpose && (
+                    <View style={styles.detailRow}>
+                        <IconSymbol name="info.circle" size={14} color={NeutralColors.gray400} />
+                        <Text style={styles.detailText} numberOfLines={2}>{medication.purpose}</Text>
+                    </View>
+                )}
+
+                {/* Dosages */}
+                {dosages.length > 0 && (
+                    <View style={styles.dosageSection}>
+                        <Text style={styles.dosageLabel}>Dosages</Text>
+                        {dosages.slice(0, 3).map((dosage) => (
+                            <View key={dosage.id} style={styles.dosageRow}>
+                                <Text style={styles.dosageAmount}>
+                                    {dosage.dosage_amount} {dosage.dosage_unit}
+                                </Text>
+                                <Text style={styles.dosageTime}>
+                                    {formatTime(dosage.time_of_day)}
+                                </Text>
+                            </View>
+                        ))}
+                        {dosages.length > 3 && (
+                            <Text style={styles.moreText}>+{dosages.length - 3} more</Text>
+                        )}
+                    </View>
+                )}
+
+                {/* Confirm dose button */}
+                {nextDosage && onConfirmDose && (
+                    <TouchableOpacity
+                        style={[styles.confirmButton, isTaken && styles.confirmButtonTaken]}
+                        onPress={handleConfirm}
+                        disabled={isTaken}
+                        activeOpacity={0.8}
+                    >
+                        <IconSymbol
+                            name={isTaken ? "checkmark.circle.fill" : "checkmark"}
+                            size={18}
+                            color={isTaken ? SemanticColors.success : NeutralColors.white}
+                        />
+                        <Text style={[styles.confirmText, isTaken && styles.confirmTextTaken]}>
+                            {isTaken ? 'Taken Today' : 'Confirm Dose'}
+                        </Text>
+                    </TouchableOpacity>
+                )}
+
+                {/* Instructions */}
+                {medication.instructions && (
+                    <View style={styles.instructionsRow}>
+                        <IconSymbol name="info.circle" size={14} color={NeutralColors.gray400} />
+                        <Text style={styles.instructions} numberOfLines={2}>{medication.instructions}</Text>
+                    </View>
+                )}
             </View>
-
-            {onEdit && (
-                <TouchableOpacity onPress={onEdit} hitSlop={12} style={styles.editButton}>
-                    <IconSymbol name="pencil" size={20} color="#007AFF" />
-                </TouchableOpacity>
-            )}
-
-            {medication.purpose && (
-                <Text style={styles.purpose}>{medication.purpose}</Text>
-            )}
-
-            {dosages.length > 0 && (
-                <View style={styles.dosageSection}>
-                    <Text style={styles.dosageLabel}>Dosages:</Text>
-                    {dosages.slice(0, 3).map((dosage) => (
-                        <View key={dosage.id} style={styles.dosageRow}>
-                            <Text style={styles.dosageAmount}>
-                                {dosage.dosage_amount} {dosage.dosage_unit}
-                            </Text>
-                            <Text style={styles.dosageTime}>
-                                {formatTime(dosage.time_of_day)}
-                            </Text>
-                        </View>
-                    ))}
-                    {dosages.length > 3 && (
-                        <Text style={styles.moreText}>+{dosages.length - 3} more</Text>
-                    )}
-                </View>
-            )}
-
-            {nextDosage && onConfirmDose && (
-                <TouchableOpacity
-                    style={[styles.confirmButton, isTaken && styles.confirmButtonTaken]}
-                    onPress={handleConfirm}
-                    disabled={isTaken}
-                    activeOpacity={0.8}
-                >
-                    <IconSymbol
-                        name={isTaken ? "checkmark.circle.fill" : "checkmark"}
-                        size={18}
-                        color={isTaken ? "#34C759" : "#fff"}
-                    />
-                    <Text style={[styles.confirmText, isTaken && styles.confirmTextTaken]}>
-                        {isTaken ? 'Taken Today' : 'Confirm Dose'}
-                    </Text>
-                </TouchableOpacity>
-            )}
-
-            {medication.instructions && (
-                <View style={styles.instructionsSection}>
-                    <IconSymbol name="info.circle" size={14} color="#666" />
-                    <Text style={styles.instructions}>{medication.instructions}</Text>
-                </View>
-            )}
         </TouchableOpacity>
     );
 }
 
 const styles = StyleSheet.create({
     card: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
+        flexDirection: 'row',
+        backgroundColor: NeutralColors.white,
+        borderRadius: Radius.md,
+        marginBottom: Spacing.md,
+        overflow: 'hidden',
+        ...Shadows.md,
+    },
+    accentBorder: {
+        width: 4,
+        backgroundColor: SemanticColors.warning,
+        borderTopLeftRadius: Radius.md,
+        borderBottomLeftRadius: Radius.md,
+    },
+    content: {
+        flex: 1,
+        padding: Spacing.lg,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 12,
     },
     iconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: '#FFF3E0',
+        width: 40,
+        height: 40,
+        borderRadius: Radius.xl,
+        backgroundColor: SemanticColors.warningLight,
         justifyContent: 'center',
         alignItems: 'center',
+        marginRight: Spacing.md,
     },
     headerInfo: {
         flex: 1,
-        marginLeft: 12,
     },
     name: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '600',
-        color: '#333',
+        color: NeutralColors.gray900,
+        marginBottom: 2,
     },
-    route: {
-        fontSize: 14,
-        color: '#666',
-        marginTop: 2,
+    routeBadge: {
+        backgroundColor: SemanticColors.warning + '15',
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: 2,
+        borderRadius: Radius.sm,
+        alignSelf: 'flex-start',
+    },
+    routeText: {
+        fontSize: 12,
+        color: SemanticColors.warning,
+        fontWeight: '500',
         textTransform: 'capitalize',
     },
-    purpose: {
-        fontSize: 14,
-        color: '#666',
-        marginBottom: 12,
+    actions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        marginLeft: Spacing.sm,
+    },
+    actionButton: {
+        padding: Spacing.xs,
+    },
+    detailRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        marginTop: Spacing.sm,
+    },
+    detailText: {
+        flex: 1,
+        fontSize: 13,
+        color: NeutralColors.gray400,
     },
     dosageSection: {
-        backgroundColor: '#f9f9f9',
-        borderRadius: 8,
-        padding: 12,
-        marginBottom: 12,
+        backgroundColor: NeutralColors.gray50,
+        borderRadius: Radius.sm,
+        padding: Spacing.md,
+        marginTop: Spacing.md,
     },
     dosageLabel: {
         fontSize: 12,
         fontWeight: '600',
-        color: '#666',
-        marginBottom: 8,
+        color: NeutralColors.gray400,
+        marginBottom: Spacing.sm,
     },
     dosageRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 4,
+        paddingVertical: Spacing.xs,
     },
     dosageAmount: {
         fontSize: 14,
-        color: '#333',
+        color: NeutralColors.gray900,
         fontWeight: '500',
     },
     dosageTime: {
         fontSize: 14,
-        color: '#007AFF',
+        fontWeight: '500',
+        color: BrandColors.accent,
     },
     moreText: {
         fontSize: 12,
-        color: '#666',
-        marginTop: 4,
+        color: NeutralColors.gray400,
+        marginTop: Spacing.xs,
     },
     confirmButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#34C759',
-        borderRadius: 8,
-        padding: 12,
-        gap: 8,
-        marginBottom: 12,
+        backgroundColor: SemanticColors.success,
+        borderRadius: Radius.sm,
+        padding: Spacing.md,
+        gap: Spacing.sm,
+        marginTop: Spacing.md,
     },
     confirmButtonTaken: {
-        backgroundColor: '#F2F2F7',
+        backgroundColor: NeutralColors.gray50,
         borderWidth: 1,
-        borderColor: '#E5E5EA',
+        borderColor: NeutralColors.gray100,
     },
     confirmText: {
-        color: '#fff',
+        color: NeutralColors.white,
         fontSize: 14,
         fontWeight: '600',
     },
     confirmTextTaken: {
-        color: '#34C759',
+        color: SemanticColors.success,
     },
-    instructionsSection: {
+    instructionsRow: {
         flexDirection: 'row',
         alignItems: 'flex-start',
-        gap: 8,
+        gap: Spacing.sm,
+        marginTop: Spacing.sm,
     },
     instructions: {
         flex: 1,
         fontSize: 12,
-        color: '#666',
+        color: NeutralColors.gray400,
         fontStyle: 'italic',
-    },
-    editButton: {
-        position: 'absolute',
-        top: 16,
-        right: 16,
-        padding: 4,
+        lineHeight: 18,
     },
 });

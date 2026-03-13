@@ -55,7 +55,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Calendar',
+          title: 'Cycles',
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="calendar" color={color} />,
         }}
       />
@@ -69,8 +69,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="mood"
         options={{
-          title: 'Notifications',
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="bell" color={color} />,
+          title: 'Mood',
+          tabBarIcon: ({ color }) => <IconSymbol size={26} name="face.smiling.fill" color={color} />,
         }}
       />
       <Tabs.Screen

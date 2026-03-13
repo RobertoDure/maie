@@ -10,6 +10,7 @@ export default function CycleLayout() {
         >
             <Stack.Screen name="new" />
             <Stack.Screen name="[id]/index" />
+            <Stack.Screen name="[id]/edit" />
             <Stack.Screen name="[id]/appointments" />
             <Stack.Screen name="[id]/share" />
         </Stack>

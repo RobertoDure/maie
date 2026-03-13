@@ -1,4 +1,6 @@
+import { AppointmentCard } from '@/components/appointment-card';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { BrandColors, NeutralColors, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { Database } from '@/lib/database.types';
 import { AppointmentService } from '@/lib/services/appointment.service';
@@ -12,6 +14,7 @@ import {
     Modal,
     Platform,
     RefreshControl,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -40,6 +43,9 @@ export default function AppointmentsScreen() {
     const [modalVisible, setModalVisible] = useState(false);
     const [saving, setSaving] = useState(false);
 
+    // Edit state — null means create mode, non-null means edit mode
+    const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+
     // Form state
     const [title, setTitle] = useState('');
     const [appointmentType, setAppointmentType] = useState('');
@@ -48,6 +54,8 @@ export default function AppointmentsScreen() {
     const [clinicianName, setClinicianName] = useState('');
     const [notes, setNotes] = useState('');
     const [showDatePicker, setShowDatePicker] = useState(false);
+
+    const isEditing = editingAppointment !== null;
 
     const onDateChange = (event: any, selectedDate?: Date) => {
         const currentDate = selectedDate || scheduledAt;
@@ -100,6 +108,28 @@ export default function AppointmentsScreen() {
         setLocation('');
         setClinicianName('');
         setNotes('');
+        setEditingAppointment(null);
+    };
+
+    const openCreateModal = () => {
+        resetForm();
+        setModalVisible(true);
+    };
+
+    const openEditModal = (appointment: Appointment) => {
+        setEditingAppointment(appointment);
+        setTitle(appointment.title || '');
+        setAppointmentType(appointment.appointment_type || '');
+        setScheduledAt(appointment.scheduled_at ? new Date(appointment.scheduled_at) : new Date());
+        setLocation(appointment.location || '');
+        setClinicianName(appointment.clinician_name || '');
+        setNotes(appointment.notes || '');
+        setModalVisible(true);
+    };
+
+    const handleCloseModal = () => {
+        setModalVisible(false);
+        resetForm();
     };
 
     const handleCreate = async () => {
@@ -129,6 +159,36 @@ export default function AppointmentsScreen() {
             setSaving(false);
         }
     };
+
+    const handleUpdate = async () => {
+        if (!user || !editingAppointment) return;
+        if (!title.trim()) {
+            Alert.alert('Error', 'Please enter a title');
+            return;
+        }
+
+        setSaving(true);
+        try {
+            await AppointmentService.updateAppointment(user.id, editingAppointment.id, {
+                title: title.trim(),
+                appointment_type: appointmentType || null,
+                scheduled_at: scheduledAt.toISOString(),
+                location: location || null,
+                clinician_name: clinicianName || null,
+                notes: notes || null,
+            });
+
+            setModalVisible(false);
+            resetForm();
+            loadAppointments();
+        } catch (error: any) {
+            Alert.alert('Error', error.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSave = isEditing ? handleUpdate : handleCreate;
 
     const handleDelete = async (appointmentId: string) => {
         if (!user) return;
@@ -161,46 +221,18 @@ export default function AppointmentsScreen() {
     };
 
     const renderAppointment = ({ item }: { item: Appointment }) => (
-        <View style={styles.appointmentCard}>
-            <View style={styles.appointmentHeader}>
-                <View style={styles.appointmentInfo}>
-                    <Text style={styles.appointmentTitle}>{item.title}</Text>
-                    {item.appointment_type && (
-                        <View style={styles.typeBadge}>
-                            <Text style={styles.typeText}>{item.appointment_type}</Text>
-                        </View>
-                    )}
-                </View>
-                <TouchableOpacity onPress={() => handleDelete(item.id)}>
-                    <IconSymbol name="trash" size={20} color="#FF3B30" />
-                </TouchableOpacity>
-            </View>
-            <View style={styles.appointmentDetails}>
-                <View style={styles.detailRow}>
-                    <IconSymbol name="calendar" size={16} color="#666" />
-                    <Text style={styles.detailText}>{formatDate(item.scheduled_at!)}</Text>
-                </View>
-                {item.location && (
-                    <View style={styles.detailRow}>
-                        <IconSymbol name="mappin" size={16} color="#666" />
-                        <Text style={styles.detailText}>{item.location}</Text>
-                    </View>
-                )}
-                {item.clinician_name && (
-                    <View style={styles.detailRow}>
-                        <IconSymbol name="person" size={16} color="#666" />
-                        <Text style={styles.detailText}>{item.clinician_name}</Text>
-                    </View>
-                )}
-            </View>
-            {item.notes && <Text style={styles.notes}>{item.notes}</Text>}
-        </View>
+        <AppointmentCard
+            appointment={item}
+            showFullDate
+            onEdit={() => openEditModal(item)}
+            onDelete={() => handleDelete(item.id)}
+        />
     );
 
     if (loading) {
         return (
             <View style={styles.centerContainer}>
-                <ActivityIndicator size="large" color="#007AFF" />
+                <ActivityIndicator size="large" color={BrandColors.primary} />
             </View>
         );
     }
@@ -209,24 +241,24 @@ export default function AppointmentsScreen() {
         <View style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <IconSymbol name="chevron.left" size={24} color="#007AFF" />
+                    <IconSymbol name="chevron.left" size={24} color={BrandColors.primary} />
                 </TouchableOpacity>
                 <Text style={styles.title}>Appointments</Text>
                 <TouchableOpacity
                     style={styles.addButton}
-                    onPress={() => setModalVisible(true)}
+                    onPress={openCreateModal}
                 >
-                    <IconSymbol name="plus" size={24} color="#007AFF" />
+                    <IconSymbol name="plus" size={24} color={BrandColors.primary} />
                 </TouchableOpacity>
             </View>
 
             {appointments.length === 0 ? (
                 <View style={styles.emptyContainer}>
-                    <IconSymbol name="calendar" size={64} color="#ccc" />
+                    <IconSymbol name="calendar" size={64} color={NeutralColors.gray200} />
                     <Text style={styles.emptyText}>No appointments yet</Text>
                     <TouchableOpacity
                         style={styles.createButton}
-                        onPress={() => setModalVisible(true)}
+                        onPress={openCreateModal}
                     >
                         <Text style={styles.createButtonText}>Add Appointment</Text>
                     </TouchableOpacity>
@@ -243,7 +275,7 @@ export default function AppointmentsScreen() {
                 />
             )}
 
-            {/* Add Modal */}
+            {/* Create / Edit Modal */}
             <Modal
                 visible={modalVisible}
                 animationType="slide"
@@ -251,22 +283,25 @@ export default function AppointmentsScreen() {
             >
                 <View style={styles.modalContainer}>
                     <View style={styles.modalHeader}>
-                        <TouchableOpacity onPress={() => setModalVisible(false)}>
+                        <TouchableOpacity onPress={handleCloseModal}>
                             <Text style={styles.cancelText}>Cancel</Text>
                         </TouchableOpacity>
-                        <Text style={styles.modalTitle}>New Appointment</Text>
-                        <TouchableOpacity onPress={handleCreate} disabled={saving}>
+                        <Text style={styles.modalTitle}>
+                            {isEditing ? 'Edit Appointment' : 'New Appointment'}
+                        </Text>
+                        <TouchableOpacity onPress={handleSave} disabled={saving}>
                             <Text style={[styles.saveText, saving && styles.disabledText]}>
-                                {saving ? 'Saving...' : 'Save'}
+                                {saving ? 'Saving...' : isEditing ? 'Update' : 'Save'}
                             </Text>
                         </TouchableOpacity>
                     </View>
 
-                    <View style={styles.form}>
+                    <ScrollView style={styles.form} keyboardShouldPersistTaps="handled">
                         <Text style={styles.label}>Title</Text>
                         <TextInput
                             style={styles.input}
                             placeholder="e.g., Morning Ultrasound"
+                            placeholderTextColor={NeutralColors.gray300}
                             value={title}
                             onChangeText={setTitle}
                         />
@@ -299,7 +334,9 @@ export default function AppointmentsScreen() {
                             style={styles.dateButton}
                             onPress={() => showMode('date')}
                         >
-                            <Text>{formatDate(scheduledAt.toISOString())}</Text>
+                            <Text style={styles.dateButtonText}>
+                                {formatDate(scheduledAt.toISOString())}
+                            </Text>
                         </TouchableOpacity>
                         {showDatePicker && Platform.OS === 'ios' && (
                             <DateTimePicker
@@ -317,6 +354,7 @@ export default function AppointmentsScreen() {
                         <TextInput
                             style={styles.input}
                             placeholder="Clinic address"
+                            placeholderTextColor={NeutralColors.gray300}
                             value={location}
                             onChangeText={setLocation}
                         />
@@ -325,6 +363,7 @@ export default function AppointmentsScreen() {
                         <TextInput
                             style={styles.input}
                             placeholder="Doctor name"
+                            placeholderTextColor={NeutralColors.gray300}
                             value={clinicianName}
                             onChangeText={setClinicianName}
                         />
@@ -333,21 +372,22 @@ export default function AppointmentsScreen() {
                         <TextInput
                             style={[styles.input, styles.notesInput]}
                             placeholder="Any additional notes"
+                            placeholderTextColor={NeutralColors.gray300}
                             value={notes}
                             onChangeText={setNotes}
                             multiline
                         />
-                    </View>
-                </View >
-            </Modal >
-        </View >
+                    </ScrollView>
+                </View>
+            </Modal>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: NeutralColors.gray50,
     },
     centerContainer: {
         flex: 1,
@@ -358,151 +398,98 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 20,
+        padding: Spacing.xl,
         paddingTop: 60,
-        backgroundColor: '#fff',
+        backgroundColor: NeutralColors.white,
         borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
+        borderBottomColor: NeutralColors.gray100,
     },
     backButton: {
-        padding: 8,
+        padding: Spacing.sm,
     },
     title: {
         fontSize: 20,
         fontWeight: '600',
+        color: NeutralColors.gray900,
     },
     addButton: {
-        padding: 8,
+        padding: Spacing.sm,
     },
     listContainer: {
-        padding: 16,
-    },
-    appointmentCard: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    appointmentHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 12,
-    },
-    appointmentInfo: {
-        flex: 1,
-    },
-    appointmentTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#333',
-        marginBottom: 4,
-    },
-    typeBadge: {
-        backgroundColor: '#E3F2FF',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
-        alignSelf: 'flex-start',
-    },
-    typeText: {
-        fontSize: 12,
-        color: '#007AFF',
-        fontWeight: '500',
-    },
-    appointmentDetails: {
-        gap: 8,
-    },
-    detailRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    detailText: {
-        fontSize: 14,
-        color: '#666',
-    },
-    notes: {
-        fontSize: 14,
-        color: '#666',
-        marginTop: 12,
-        fontStyle: 'italic',
+        padding: Spacing.lg,
     },
     emptyContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 32,
+        padding: Spacing.xxxl,
     },
     emptyText: {
         fontSize: 18,
-        color: '#666',
-        marginTop: 16,
-        marginBottom: 24,
+        color: NeutralColors.gray400,
+        marginTop: Spacing.lg,
+        marginBottom: Spacing.xxl,
     },
     createButton: {
-        backgroundColor: '#007AFF',
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 12,
+        backgroundColor: BrandColors.primary,
+        paddingHorizontal: Spacing.xxl,
+        paddingVertical: Spacing.md,
+        borderRadius: Radius.md,
     },
     createButtonText: {
-        color: '#fff',
+        color: NeutralColors.white,
         fontSize: 16,
         fontWeight: '600',
     },
     modalContainer: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: NeutralColors.gray50,
     },
     modalHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 20,
+        padding: Spacing.xl,
         paddingTop: 60,
-        backgroundColor: '#fff',
+        backgroundColor: NeutralColors.white,
         borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
+        borderBottomColor: NeutralColors.gray100,
     },
     modalTitle: {
         fontSize: 18,
         fontWeight: '600',
+        color: NeutralColors.gray900,
     },
     cancelText: {
         fontSize: 16,
-        color: '#666',
+        color: NeutralColors.gray400,
     },
     saveText: {
         fontSize: 16,
-        color: '#007AFF',
+        color: BrandColors.primary,
         fontWeight: '600',
     },
     disabledText: {
         opacity: 0.5,
     },
     form: {
-        padding: 20,
+        padding: Spacing.xl,
     },
     label: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#333',
-        marginBottom: 8,
-        marginTop: 16,
+        color: NeutralColors.gray900,
+        marginBottom: Spacing.sm,
+        marginTop: Spacing.lg,
     },
     input: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
+        backgroundColor: NeutralColors.white,
+        borderRadius: Radius.md,
+        padding: Spacing.lg,
         fontSize: 16,
         borderWidth: 1,
-        borderColor: '#e0e0e0',
+        borderColor: NeutralColors.gray100,
+        color: NeutralColors.gray900,
     },
     notesInput: {
         minHeight: 80,
@@ -511,32 +498,36 @@ const styles = StyleSheet.create({
     typeRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 8,
+        gap: Spacing.sm,
     },
     typeButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 16,
-        backgroundColor: '#fff',
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.sm,
+        borderRadius: Radius.lg,
+        backgroundColor: NeutralColors.white,
         borderWidth: 1,
-        borderColor: '#e0e0e0',
+        borderColor: NeutralColors.gray100,
     },
     typeButtonSelected: {
-        backgroundColor: '#007AFF',
-        borderColor: '#007AFF',
+        backgroundColor: BrandColors.primary,
+        borderColor: BrandColors.primary,
     },
     typeButtonText: {
         fontSize: 14,
-        color: '#333',
+        color: NeutralColors.gray900,
     },
     typeButtonTextSelected: {
-        color: '#fff',
+        color: NeutralColors.white,
     },
     dateButton: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
+        backgroundColor: NeutralColors.white,
+        borderRadius: Radius.md,
+        padding: Spacing.lg,
         borderWidth: 1,
-        borderColor: '#e0e0e0',
+        borderColor: NeutralColors.gray100,
+    },
+    dateButtonText: {
+        fontSize: 16,
+        color: NeutralColors.gray900,
     },
 });

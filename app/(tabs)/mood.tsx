@@ -1,17 +1,27 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import {
+    BrandColors,
+    NeutralColors,
+    Radius,
+    SemanticColors,
+    Shadows,
+    Spacing,
+} from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { MoodService, MoodTrend } from '@/lib/services';
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
+
+const WellnessPink = '#FF2D55';
 
 const SYMPTOMS = [
   'Bloating',
@@ -136,196 +146,224 @@ export default function MoodScreen() {
       </View>
       <ScrollView contentContainerStyle={styles.content}>
         {hasTodayCheckin ? (
-          <View style={styles.completedContainer}>
-            <IconSymbol name="checkmark.circle.fill" size={64} color="#34C759" />
-            <Text style={styles.completedText}>Today's check-in complete!</Text>
-            <Text style={styles.completedSubtext}>
-              Come back tomorrow to track your progress
-            </Text>
+          <View style={styles.card}>
+            <View style={[styles.cardAccent, { backgroundColor: SemanticColors.success }]} />
+            <View style={styles.cardBody}>
+              <View style={styles.completedContainer}>
+                <IconSymbol name="checkmark.circle.fill" size={56} color={SemanticColors.success} />
+                <Text style={styles.completedText}>Today's check-in complete!</Text>
+                <Text style={styles.completedSubtext}>
+                  Come back tomorrow to track your progress
+                </Text>
+              </View>
+            </View>
           </View>
         ) : (
-          <>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>How are you feeling today?</Text>
-              <View style={styles.emojiRow}>
-                {moodEmojis.map((emoji, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.emojiButton,
-                      moodScore === index + 1 && styles.emojiButtonSelected,
-                    ]}
-                    onPress={() => handleMoodChange(index + 1)}
-                  >
-                    <Text style={styles.emoji}>{emoji}</Text>
-                  </TouchableOpacity>
-                ))}
+          <View style={styles.card}>
+            <View style={[styles.cardAccent, { backgroundColor: BrandColors.primary }]} />
+            <View style={styles.cardBody}>
+              <View style={styles.cardTitleRow}>
+                <View style={[styles.cardIconCircle, { backgroundColor: BrandColors.primary + '12' }]}>
+                  <IconSymbol name="heart.text.square" size={20} color={BrandColors.primary} />
+                </View>
+                <Text style={styles.cardTitle}>Daily Check-in</Text>
               </View>
-            </View>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Anxiety level</Text>
-              <View style={styles.emojiRow}>
-                {anxietyEmojis.map((emoji, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.emojiButton,
-                      anxietyLevel === index + 1 && styles.emojiButtonSelected,
-                    ]}
-                    onPress={() => handleAnxietyChange(index + 1)}
-                  >
-                    <Text style={styles.emoji}>{emoji}</Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>How are you feeling today?</Text>
+                <View style={styles.emojiRow}>
+                  {moodEmojis.map((emoji, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.emojiButton,
+                        moodScore === index + 1 && styles.emojiButtonSelected,
+                      ]}
+                      onPress={() => handleMoodChange(index + 1)}
+                    >
+                      <Text style={styles.emoji}>{emoji}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
-            </View>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Additional notes (optional)</Text>
-              <TextInput
-                style={styles.notesInput}
-                placeholder="How are you feeling today?"
-                multiline
-                numberOfLines={4}
-                value={notes}
-                onChangeText={setNotes}
-              />
-            </View>
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Anxiety level</Text>
+                <View style={styles.emojiRow}>
+                  {anxietyEmojis.map((emoji, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.emojiButton,
+                        anxietyLevel === index + 1 && styles.emojiButtonSelected,
+                      ]}
+                      onPress={() => handleAnxietyChange(index + 1)}
+                    >
+                      <Text style={styles.emoji}>{emoji}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
 
-            <TouchableOpacity
-              style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-              onPress={submitCheckin}
-              disabled={loading}
-            >
-              <Text style={styles.submitButtonText}>
-                {loading ? 'Saving...' : 'Complete Check-in'}
-              </Text>
-            </TouchableOpacity>
-          </>
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Additional notes (optional)</Text>
+                <TextInput
+                  style={styles.notesInput}
+                  placeholder="How are you feeling today?"
+                  placeholderTextColor={NeutralColors.gray300}
+                  multiline
+                  numberOfLines={4}
+                  value={notes}
+                  onChangeText={setNotes}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+                onPress={submitCheckin}
+                disabled={loading}
+              >
+                <Text style={styles.submitButtonText}>
+                  {loading ? 'Saving...' : 'Complete Check-in'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
 
-        {/* Symptom Logging Section */}
-        <View style={styles.divider} />
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Log a Symptom</Text>
-            <TouchableOpacity onPress={() => setShowSymptomForm(!showSymptomForm)}>
+        {/* Symptom Logging Card */}
+        <View style={styles.card}>
+          <View style={[styles.cardAccent, { backgroundColor: WellnessPink }]} />
+          <View style={styles.cardBody}>
+            <TouchableOpacity
+              style={styles.cardTitleRow}
+              activeOpacity={0.7}
+              onPress={() => setShowSymptomForm(!showSymptomForm)}
+            >
+              <View style={[styles.cardIconCircle, { backgroundColor: WellnessPink + '12' }]}>
+                <IconSymbol name="staroflife" size={20} color={WellnessPink} />
+              </View>
+              <Text style={[styles.cardTitle, { flex: 1 }]}>Log a Symptom</Text>
               <IconSymbol
                 name={showSymptomForm ? 'chevron.up' : 'chevron.down'}
-                size={20}
-                color="#007AFF"
+                size={18}
+                color={NeutralColors.gray400}
               />
             </TouchableOpacity>
-          </View>
 
-          {showSymptomForm && (
-            <>
-              <Text style={styles.label}>Select symptom</Text>
-              <View style={styles.symptomGrid}>
-                {SYMPTOMS.map((symptom) => (
-                  <TouchableOpacity
-                    key={symptom}
-                    style={[
-                      styles.symptomChip,
-                      selectedSymptom === symptom && styles.symptomChipSelected,
-                    ]}
-                    onPress={() => setSelectedSymptom(symptom)}
-                  >
-                    <Text
+            {showSymptomForm && (
+              <View style={styles.section}>
+                <Text style={styles.label}>Select symptom</Text>
+                <View style={styles.symptomGrid}>
+                  {SYMPTOMS.map((symptom) => (
+                    <TouchableOpacity
+                      key={symptom}
                       style={[
-                        styles.symptomChipText,
-                        selectedSymptom === symptom && styles.symptomChipTextSelected,
+                        styles.symptomChip,
+                        selectedSymptom === symptom && styles.symptomChipSelected,
                       ]}
+                      onPress={() => setSelectedSymptom(symptom)}
                     >
-                      {symptom}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {selectedSymptom && (
-                <>
-                  <Text style={styles.label}>Severity: {severityLabels[symptomSeverity - 1]}</Text>
-                  <View style={styles.severityRow}>
-                    {[1, 2, 3, 4, 5].map((level) => (
-                      <TouchableOpacity
-                        key={level}
+                      <Text
                         style={[
-                          styles.severityButton,
-                          symptomSeverity === level && styles.severityButtonSelected,
+                          styles.symptomChipText,
+                          selectedSymptom === symptom && styles.symptomChipTextSelected,
                         ]}
-                        onPress={() => setSymptomSeverity(level)}
                       >
-                        <Text
+                        {symptom}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {selectedSymptom && (
+                  <>
+                    <Text style={styles.label}>Severity: {severityLabels[symptomSeverity - 1]}</Text>
+                    <View style={styles.severityRow}>
+                      {[1, 2, 3, 4, 5].map((level) => (
+                        <TouchableOpacity
+                          key={level}
                           style={[
-                            styles.severityText,
-                            symptomSeverity === level && styles.severityTextSelected,
+                            styles.severityButton,
+                            symptomSeverity === level && styles.severityButtonSelected,
                           ]}
+                          onPress={() => setSymptomSeverity(level)}
                         >
-                          {level}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                          <Text
+                            style={[
+                              styles.severityText,
+                              symptomSeverity === level && styles.severityTextSelected,
+                            ]}
+                          >
+                            {level}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
 
-                  <TextInput
-                    style={styles.symptomNotesInput}
-                    placeholder="Any notes about this symptom"
-                    value={symptomNotes}
-                    onChangeText={setSymptomNotes}
-                  />
+                    <TextInput
+                      style={styles.symptomNotesInput}
+                      placeholder="Any notes about this symptom"
+                      placeholderTextColor={NeutralColors.gray300}
+                      value={symptomNotes}
+                      onChangeText={setSymptomNotes}
+                    />
 
-                  <TouchableOpacity
-                    style={[styles.symptomSubmitButton, savingSymptom && styles.submitButtonDisabled]}
-                    onPress={submitSymptom}
-                    disabled={savingSymptom}
-                  >
-                    <Text style={styles.submitButtonText}>
-                      {savingSymptom ? 'Saving...' : 'Log Symptom'}
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </>
-          )}
+                    <TouchableOpacity
+                      style={[styles.symptomSubmitButton, savingSymptom && styles.submitButtonDisabled]}
+                      onPress={submitSymptom}
+                      disabled={savingSymptom}
+                    >
+                      <Text style={styles.submitButtonText}>
+                        {savingSymptom ? 'Saving...' : 'Log Symptom'}
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            )}
+          </View>
         </View>
 
-        {/* Trends Section - Simple Visual */}
+        {/* Trends Card */}
         {trends.length > 1 && (
-          <>
-            <View style={styles.divider} />
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>14-Day Trends</Text>
-              <View style={styles.trendContainer}>
-                <View style={styles.trendLegend}>
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: '#34C759' }]} />
-                    <Text style={styles.legendText}>Mood</Text>
-                  </View>
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: '#FF3B30' }]} />
-                    <Text style={styles.legendText}>Anxiety</Text>
-                  </View>
+          <View style={styles.card}>
+            <View style={[styles.cardAccent, { backgroundColor: BrandColors.accent }]} />
+            <View style={styles.cardBody}>
+              <View style={styles.cardTitleRow}>
+                <View style={[styles.cardIconCircle, { backgroundColor: BrandColors.accent + '12' }]}>
+                  <IconSymbol name="chart.bar" size={20} color={BrandColors.accent} />
                 </View>
-                {trends.slice(-7).map((trend, index) => (
-                  <View key={index} style={styles.trendRow}>
-                    <Text style={styles.trendDate}>
-                      {new Date(trend.date).toLocaleDateString('en-US', { weekday: 'short' })}
-                    </Text>
-                    <View style={styles.trendBarsContainer}>
-                      <View style={styles.trendBarWrapper}>
-                        {renderTrendBar(trend.mood_score, 5, '#34C759')}
-                      </View>
-                      <View style={styles.trendBarWrapper}>
-                        {renderTrendBar(trend.anxiety_level, 5, '#FF3B30')}
-                      </View>
+                <Text style={styles.cardTitle}>14-Day Trends</Text>
+              </View>
+
+              <View style={styles.trendLegend}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: SemanticColors.success }]} />
+                  <Text style={styles.legendText}>Mood</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: SemanticColors.error }]} />
+                  <Text style={styles.legendText}>Anxiety</Text>
+                </View>
+              </View>
+              {trends.slice(-7).map((trend, index) => (
+                <View key={index} style={styles.trendRow}>
+                  <Text style={styles.trendDate}>
+                    {new Date(trend.date).toLocaleDateString('en-US', { weekday: 'short' })}
+                  </Text>
+                  <View style={styles.trendBarsContainer}>
+                    <View style={styles.trendBarWrapper}>
+                      {renderTrendBar(trend.mood_score, 5, SemanticColors.success)}
+                    </View>
+                    <View style={styles.trendBarWrapper}>
+                      {renderTrendBar(trend.anxiety_level, 5, SemanticColors.error)}
                     </View>
                   </View>
-                ))}
-              </View>
+                </View>
+              ))}
             </View>
-          </>
+          </View>
         )}
       </ScrollView>
     </View>
@@ -335,232 +373,261 @@ export default function MoodScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: NeutralColors.gray50,
   },
   header: {
-    padding: 20,
+    padding: Spacing.xl,
     paddingTop: 60,
-    backgroundColor: '#fff',
+    backgroundColor: NeutralColors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: NeutralColors.gray100,
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
+    color: NeutralColors.gray900,
   },
   content: {
-    padding: 20,
+    padding: Spacing.lg,
     paddingBottom: 40,
   },
-  section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
+  // Card shared pattern
+  card: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    backgroundColor: NeutralColors.white,
+    borderRadius: Radius.md,
+    marginBottom: Spacing.lg,
+    overflow: 'hidden',
+    ...Shadows.md,
+  },
+  cardAccent: {
+    width: 4,
+    borderTopLeftRadius: Radius.md,
+    borderBottomLeftRadius: Radius.md,
+  },
+  cardBody: {
+    flex: 1,
+    padding: Spacing.lg,
+  },
+  cardTitleRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: Spacing.md,
+  },
+  cardIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+  },
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: NeutralColors.gray900,
+  },
+  // Sections inside cards
+  section: {
+    marginBottom: Spacing.lg,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#333',
+    color: NeutralColors.gray900,
+    marginBottom: Spacing.sm,
   },
+  // Emoji selector
   emojiRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 12,
+    marginTop: Spacing.sm,
   },
   emojiButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#fff',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: NeutralColors.gray50,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#e0e0e0',
+    borderColor: NeutralColors.gray100,
   },
   emojiButtonSelected: {
-    borderColor: '#007AFF',
-    backgroundColor: '#E3F2FF',
+    borderColor: BrandColors.primary,
+    backgroundColor: BrandColors.primary + '12',
   },
   emoji: {
-    fontSize: 28,
+    fontSize: 26,
   },
+  // Notes input
   notesInput: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
+    backgroundColor: NeutralColors.gray50,
+    borderRadius: Radius.sm,
+    padding: Spacing.lg,
+    fontSize: 15,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    minHeight: 100,
+    borderColor: NeutralColors.gray100,
+    minHeight: 96,
     textAlignVertical: 'top',
-    marginTop: 12,
+    marginTop: Spacing.sm,
+    color: NeutralColors.gray900,
   },
+  // Submit button
   submitButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: BrandColors.primary,
+    borderRadius: Radius.md,
+    padding: Spacing.lg,
     alignItems: 'center',
-    marginTop: 8,
   },
   submitButtonDisabled: {
     opacity: 0.5,
   },
   submitButtonText: {
-    color: '#fff',
+    color: NeutralColors.white,
     fontSize: 16,
     fontWeight: '600',
   },
+  // Completed state
   completedContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
-    marginBottom: 24,
+    paddingVertical: Spacing.xxl,
   },
   completedText: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '600',
-    marginTop: 16,
-    color: '#333',
+    marginTop: Spacing.lg,
+    color: NeutralColors.gray900,
   },
   completedSubtext: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 8,
+    fontSize: 15,
+    color: NeutralColors.gray400,
+    marginTop: Spacing.sm,
     textAlign: 'center',
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#e0e0e0',
-    marginVertical: 16,
-  },
+  // Symptom form
   label: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#666',
-    marginBottom: 12,
-    marginTop: 8,
+    color: NeutralColors.gray400,
+    marginBottom: Spacing.md,
+    marginTop: Spacing.sm,
   },
   symptomGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: Spacing.sm,
   },
   symptomChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: '#fff',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.full,
+    backgroundColor: NeutralColors.gray50,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: NeutralColors.gray100,
   },
   symptomChipSelected: {
-    backgroundColor: '#FF2D55',
-    borderColor: '#FF2D55',
+    backgroundColor: WellnessPink,
+    borderColor: WellnessPink,
   },
   symptomChipText: {
     fontSize: 14,
-    color: '#333',
+    color: NeutralColors.gray900,
   },
   symptomChipTextSelected: {
-    color: '#fff',
+    color: NeutralColors.white,
     fontWeight: '600',
   },
   severityRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: Spacing.lg,
   },
   severityButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#fff',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: NeutralColors.gray50,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: NeutralColors.gray100,
   },
   severityButtonSelected: {
-    backgroundColor: '#FF2D55',
-    borderColor: '#FF2D55',
+    backgroundColor: WellnessPink,
+    borderColor: WellnessPink,
   },
   severityText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: NeutralColors.gray900,
   },
   severityTextSelected: {
-    color: '#fff',
+    color: NeutralColors.white,
   },
   symptomNotesInput: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
+    backgroundColor: NeutralColors.gray50,
+    borderRadius: Radius.sm,
+    padding: Spacing.lg,
+    fontSize: 15,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    marginBottom: 16,
+    borderColor: NeutralColors.gray100,
+    marginBottom: Spacing.lg,
+    color: NeutralColors.gray900,
   },
   symptomSubmitButton: {
-    backgroundColor: '#FF2D55',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: WellnessPink,
+    borderRadius: Radius.md,
+    padding: Spacing.lg,
     alignItems: 'center',
   },
-  trendContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 12,
-  },
+  // Trends
   trendLegend: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 24,
-    marginBottom: 16,
+    gap: Spacing.xxl,
+    marginBottom: Spacing.lg,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: Spacing.sm,
   },
   legendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   legendText: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 13,
+    color: NeutralColors.gray400,
   },
   trendRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: Spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: NeutralColors.gray100,
   },
   trendDate: {
     width: 40,
     fontSize: 12,
-    color: '#666',
+    color: NeutralColors.gray400,
+    fontWeight: '500',
   },
   trendBarsContainer: {
     flex: 1,
-    gap: 4,
+    gap: Spacing.xs,
   },
   trendBarWrapper: {
     height: 8,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 4,
+    backgroundColor: NeutralColors.gray50,
+    borderRadius: Spacing.xs,
     overflow: 'hidden',
   },
   trendBar: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: Spacing.xs,
   },
 });
