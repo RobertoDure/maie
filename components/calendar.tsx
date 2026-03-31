@@ -1,9 +1,9 @@
 import { BrandColors, NeutralColors, SemanticColors, Shadows } from '@/constants/theme';
 import React, { useMemo } from 'react';
 import {
+    Pressable,
     StyleSheet,
     Text,
-    TouchableOpacity,
     View,
 } from 'react-native';
 import { IconSymbol } from './ui/icon-symbol';
@@ -105,15 +105,15 @@ export function Calendar({
         <View style={styles.container}>
             {/* Month Header */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={goToPreviousMonth} style={styles.navButton}>
+                <Pressable onPress={goToPreviousMonth} style={({ pressed }) => [styles.navButton, pressed && { opacity: 0.7 }]}>
                     <IconSymbol name="chevron.left" size={20} color={NeutralColors.gray500} />
-                </TouchableOpacity>
+                </Pressable>
                 <Text style={styles.monthTitle}>
                     {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}
                 </Text>
-                <TouchableOpacity onPress={goToNextMonth} style={styles.navButton}>
+                <Pressable onPress={goToNextMonth} style={({ pressed }) => [styles.navButton, pressed && { opacity: 0.7 }]}>
                     <IconSymbol name="chevron.right" size={20} color={NeutralColors.gray500} />
-                </TouchableOpacity>
+                </Pressable>
             </View>
 
             {/* Day Labels */}
@@ -136,11 +136,12 @@ export function Calendar({
                     const hasMarker = hasActivity(date);
 
                     return (
-                        <TouchableOpacity
+                        <Pressable
                             key={index}
-                            style={[
+                            style={({ pressed }) => [
                                 styles.dayCell,
                                 selectedDay && styles.selectedDayCell,
+                                pressed && { opacity: 0.7 },
                             ]}
                             onPress={() => onSelectDate(date)}
                         >
@@ -165,7 +166,7 @@ export function Calendar({
                                     ]} />
                                 )}
                             </View>
-                        </TouchableOpacity>
+                        </Pressable>
                     );
                 })}
             </View>

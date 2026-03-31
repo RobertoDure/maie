@@ -1,8 +1,21 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { BrandColors, NeutralColors, Radius, Shadows, Spacing } from '@/constants/theme';
 import { Database } from '@/lib/database.types';
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { memo } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+const timeFormatter = new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+});
+
+const fullDateFormatter = new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+});
 
 type Appointment = Database['public']['Tables']['appointments']['Row'];
 
@@ -15,37 +28,18 @@ interface AppointmentCardProps {
     showFullDate?: boolean;
 }
 
-export function AppointmentCard({
+export const AppointmentCard = memo(function AppointmentCard({
     appointment,
     onPress,
     onEdit,
     onDelete,
     showFullDate = false,
 }: AppointmentCardProps) {
-    const formatTime = (date: string) => {
-        return new Date(date).toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-        });
-    };
+    const formatTime = (date: string) => timeFormatter.format(new Date(date));
+    const formatFullDate = (date: string) => fullDateFormatter.format(new Date(date));
 
-    const formatFullDate = (date: string) => {
-        return new Date(date).toLocaleDateString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-        });
-    };
-
-    const Wrapper = onPress ? TouchableOpacity : View;
-    const wrapperProps = onPress
-        ? { onPress, activeOpacity: 0.7 }
-        : {};
-
-    return (
-        <Wrapper style={styles.card} {...(wrapperProps as any)}>
+    const content = (
+        <>
             {/* Left accent border */}
             <View style={styles.accentBorder} />
 
@@ -59,29 +53,29 @@ export function AppointmentCard({
                         <Text style={styles.title} numberOfLines={1}>
                             {appointment.title || 'Appointment'}
                         </Text>
-                        {appointment.appointment_type && (
+                        {appointment.appointment_type ? (
                             <View style={styles.typeBadge}>
                                 <Text style={styles.typeText}>{appointment.appointment_type}</Text>
                             </View>
-                        )}
+                        ) : null}
                     </View>
                     <View style={styles.actions}>
-                        {onEdit && (
-                            <TouchableOpacity onPress={onEdit} hitSlop={12} style={styles.actionButton}>
+                        {onEdit ? (
+                            <Pressable onPress={onEdit} hitSlop={12} style={({ pressed }) => [styles.actionButton, pressed && { opacity: 0.7 }]}>
                                 <IconSymbol name="pencil" size={18} color={BrandColors.primary} />
-                            </TouchableOpacity>
-                        )}
-                        {onDelete && (
-                            <TouchableOpacity onPress={onDelete} hitSlop={12} style={styles.actionButton}>
+                            </Pressable>
+                        ) : null}
+                        {onDelete ? (
+                            <Pressable onPress={onDelete} hitSlop={12} style={({ pressed }) => [styles.actionButton, pressed && { opacity: 0.7 }]}>
                                 <IconSymbol name="trash" size={18} color="#FF3B30" />
-                            </TouchableOpacity>
-                        )}
+                            </Pressable>
+                        ) : null}
                     </View>
                 </View>
 
                 {/* Details section */}
                 <View style={styles.details}>
-                    {appointment.scheduled_at && (
+                    {appointment.scheduled_at ? (
                         <View style={styles.detailRow}>
                             <IconSymbol name="clock" size={14} color={BrandColors.accent} />
                             <Text style={styles.timeText}>
@@ -90,35 +84,45 @@ export function AppointmentCard({
                                     : formatTime(appointment.scheduled_at)}
                             </Text>
                         </View>
-                    )}
-                    {appointment.location && (
+                    ) : null}
+                    {appointment.location ? (
                         <View style={styles.detailRow}>
                             <IconSymbol name="mappin" size={14} color={NeutralColors.gray400} />
                             <Text style={styles.detailText} numberOfLines={1}>
                                 {appointment.location}
                             </Text>
                         </View>
-                    )}
-                    {appointment.clinician_name && (
+                    ) : null}
+                    {appointment.clinician_name ? (
                         <View style={styles.detailRow}>
                             <IconSymbol name="person" size={14} color={NeutralColors.gray400} />
                             <Text style={styles.detailText} numberOfLines={1}>
                                 {appointment.clinician_name}
                             </Text>
                         </View>
-                    )}
+                    ) : null}
                 </View>
 
                 {/* Notes */}
-                {appointment.notes && (
+                {appointment.notes ? (
                     <Text style={styles.notes} numberOfLines={2}>
                         {appointment.notes}
                     </Text>
-                )}
+                ) : null}
             </View>
-        </Wrapper>
+        </>
     );
-}
+
+    if (onPress) {
+        return (
+            <Pressable style={({ pressed }) => [styles.card, pressed && { opacity: 0.7 }]} onPress={onPress}>
+                {content}
+            </Pressable>
+        );
+    }
+
+    return <View style={styles.card}>{content}</View>;
+});
 
 const styles = StyleSheet.create({
     card: {

@@ -8,14 +8,20 @@ import React, { useEffect, useState } from 'react';
 import {
     Alert,
     FlatList,
+    Pressable,
     RefreshControl,
     StyleSheet,
     Text,
-    TouchableOpacity,
     View,
 } from 'react-native';
 
 type Cycle = Database['public']['Tables']['cycles']['Row'];
+
+const cycleDateFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+});
 
 export default function CyclesScreen() {
   const { user } = useAuth();
@@ -63,16 +69,12 @@ export default function CyclesScreen() {
 
   const formatDate = (date: string | null) => {
     if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    return cycleDateFormatter.format(new Date(date));
   };
 
   const renderCycleItem = ({ item }: { item: Cycle }) => (
     <Link href={`/cycle/${item.id}`} asChild>
-      <TouchableOpacity style={styles.cycleCard} activeOpacity={0.7}>
+      <Pressable style={styles.cycleCard}>
         {/* Left accent border — color based on status */}
         <View style={[styles.accentBorder, { backgroundColor: getStatusColor(item.status) }]} />
 
@@ -84,11 +86,11 @@ export default function CyclesScreen() {
             </View>
             <View style={styles.headerInfo}>
               <Text style={styles.cycleType} numberOfLines={1}>{item.cycle_type || 'Unknown'}</Text>
-              {item.clinic_name && (
+              {item.clinic_name ? (
                 <View style={styles.clinicBadge}>
                   <Text style={styles.clinicBadgeText}>{item.clinic_name}</Text>
                 </View>
-              )}
+              ) : null}
             </View>
             <View
               style={[
@@ -110,15 +112,15 @@ export default function CyclesScreen() {
                 {formatDate(item.start_date)} – {formatDate(item.end_date)}
               </Text>
             </View>
-            {item.protocol_name && (
+            {item.protocol_name ? (
               <View style={styles.detailRow}>
                 <IconSymbol name="doc.text" size={14} color={NeutralColors.gray400} />
                 <Text style={styles.protocolText}>{item.protocol_name}</Text>
               </View>
-            )}
+            ) : null}
           </View>
         </View>
-      </TouchableOpacity>
+      </Pressable>
     </Link>
   );
 
@@ -135,9 +137,9 @@ export default function CyclesScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>My Cycles</Text>
         <Link href="/cycle/new" asChild>
-          <TouchableOpacity style={styles.addButton}>
+          <Pressable style={styles.addButton}>
             <IconSymbol name="plus" size={24} color="#fff" />
-          </TouchableOpacity>
+          </Pressable>
         </Link>
       </View>
 
@@ -149,9 +151,9 @@ export default function CyclesScreen() {
             Start tracking your fertility journey
           </Text>
           <Link href="/cycle/new" asChild>
-            <TouchableOpacity style={styles.createButton}>
+            <Pressable style={styles.createButton}>
               <Text style={styles.createButtonText}>Create First Cycle</Text>
-            </TouchableOpacity>
+            </Pressable>
           </Link>
         </View>
       ) : (

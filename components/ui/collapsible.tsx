@@ -1,5 +1,6 @@
 import { PropsWithChildren, useState } from 'react';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
+import Animated, { useAnimatedStyle, useDerivedValue, withTiming } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -11,23 +12,28 @@ export function Collapsible({ children, title }: PropsWithChildren & { title: st
   const [isOpen, setIsOpen] = useState(false);
   const theme = useColorScheme() ?? 'light';
 
+  const rotation = useDerivedValue(() => withTiming(isOpen ? 90 : 0, { duration: 200 }));
+  const animatedIconStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
+
   return (
     <ThemedView>
-      <TouchableOpacity
-        style={styles.heading}
-        onPress={() => setIsOpen((value) => !value)}
-        activeOpacity={0.8}>
-        <IconSymbol
-          name="chevron.right"
-          size={18}
-          weight="medium"
-          color={theme === 'light' ? Colors.light.icon : Colors.dark.icon}
-          style={{ transform: [{ rotate: isOpen ? '90deg' : '0deg' }] }}
-        />
+      <Pressable
+        style={({ pressed }) => [styles.heading, pressed && { opacity: 0.8 }]}
+        onPress={() => setIsOpen((value) => !value)}>
+        <Animated.View style={animatedIconStyle}>
+          <IconSymbol
+            name="chevron.right"
+            size={18}
+            weight="medium"
+            color={theme === 'light' ? Colors.light.icon : Colors.dark.icon}
+          />
+        </Animated.View>
 
         <ThemedText type="defaultSemiBold">{title}</ThemedText>
-      </TouchableOpacity>
-      {isOpen && <ThemedView style={styles.content}>{children}</ThemedView>}
+      </Pressable>
+      {isOpen ? <ThemedView style={styles.content}>{children}</ThemedView> : null}
     </ThemedView>
   );
 }

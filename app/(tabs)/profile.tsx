@@ -1,7 +1,7 @@
 import { AvatarPickerSheet } from '@/components/avatar-picker-sheet';
 import { ProfileAvatar } from '@/components/profile-avatar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { BrandColors, NeutralColors, SemanticColors, Shadows } from '@/constants/theme';
+import { BrandColors, NeutralColors, SemanticColors, Shadows, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { UserProfileService } from '@/lib/services';
 import BottomSheet from '@gorhom/bottom-sheet';
@@ -9,10 +9,10 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Alert,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
-    TouchableOpacity,
     View,
 } from 'react-native';
 
@@ -98,7 +98,7 @@ export default function ProfileScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Profile</Text>
       </View>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
         <View style={styles.profileCard}>
           <ProfileAvatar
             size={100}
@@ -107,51 +107,51 @@ export default function ProfileScreen() {
             onEditPress={() => sheetRef.current?.expand()}
             loading={avatarLoading}
           />
-          <View style={{ height: 16 }} />
+          <View style={{ height: Spacing.lg }} />
           <Text style={styles.name}>{user?.email}</Text>
-          {role && (
+          {role ? (
             <View style={styles.roleBadge}>
               <Text style={styles.roleText}>{role.toUpperCase()}</Text>
             </View>
-          )}
+          ) : null}
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/personal-info')}>
+          <Pressable style={styles.menuItem} onPress={() => router.push('/profile/personal-info')}>
             <IconSymbol name="person" size={20} color={NeutralColors.gray400} />
             <Text style={styles.menuText}>Personal Information</Text>
             <IconSymbol name="chevron.right" size={16} color={NeutralColors.gray300} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/notifications')}>
+          </Pressable>
+          <Pressable style={styles.menuItem} onPress={() => router.push('/profile/notifications')}>
             <IconSymbol name="bell" size={20} color={NeutralColors.gray400} />
             <Text style={styles.menuText}>Notifications</Text>
             <IconSymbol name="chevron.right" size={16} color={NeutralColors.gray300} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/privacy-security')}>
+          </Pressable>
+          <Pressable style={styles.menuItem} onPress={() => router.push('/profile/privacy-security')}>
             <IconSymbol name="lock" size={20} color={NeutralColors.gray400} />
             <Text style={styles.menuText}>Privacy & Security</Text>
             <IconSymbol name="chevron.right" size={16} color={NeutralColors.gray300} />
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Support</Text>
-          <TouchableOpacity style={styles.menuItem}>
+          <Pressable style={styles.menuItem}>
             <IconSymbol name="questionmark.circle" size={20} color={NeutralColors.gray400} />
             <Text style={styles.menuText}>Help Center</Text>
             <IconSymbol name="chevron.right" size={16} color={NeutralColors.gray300} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
+          </Pressable>
+          <Pressable style={styles.menuItem}>
             <IconSymbol name="bubble.left.and.bubble.right" size={20} color={NeutralColors.gray400} />
             <Text style={styles.menuText}>Contact Support</Text>
             <IconSymbol name="chevron.right" size={16} color={NeutralColors.gray300} />
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+        <Pressable style={styles.signOutButton} onPress={handleSignOut}>
           <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
+        </Pressable>
 
         <Text style={styles.version}>Version 1.0.0</Text>
       </ScrollView>

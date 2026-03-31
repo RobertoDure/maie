@@ -15,19 +15,19 @@ import { MedicationService } from '@/lib/services/medication.service';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useReducer, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     FlatList,
     Modal,
     Platform,
+    Pressable,
     RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
-    TouchableOpacity,
     View,
 } from 'react-native';
 
@@ -41,6 +41,46 @@ interface MedicationWithDosages extends Medication {
 
 const ROUTES = ['Injection', 'Oral', 'Vaginal', 'Patch', 'Other'];
 const UNITS = ['mg', 'iu', 'mcg', 'ml', 'tablet'];
+
+interface FormState {
+  name: string;
+  route: string;
+  purpose: string;
+  instructions: string;
+  dosageAmount: string;
+  dosageUnit: string;
+  dosageTime: Date;
+  showDatePicker: boolean;
+}
+
+const initialFormState: FormState = {
+  name: '',
+  route: '',
+  purpose: '',
+  instructions: '',
+  dosageAmount: '',
+  dosageUnit: 'mg',
+  dosageTime: new Date(),
+  showDatePicker: false,
+};
+
+type FormAction =
+  | { type: 'SET_FIELD'; field: keyof FormState; value: any }
+  | { type: 'RESET' }
+  | { type: 'LOAD'; payload: Partial<FormState> };
+
+function formReducer(state: FormState, action: FormAction): FormState {
+  switch (action.type) {
+    case 'SET_FIELD':
+      return { ...state, [action.field]: action.value };
+    case 'RESET':
+      return initialFormState;
+    case 'LOAD':
+      return { ...state, ...action.payload };
+    default:
+      return state;
+  }
+}
 
 export default function MedicationsScreen() {
   const { user } = useAuth();
@@ -59,15 +99,8 @@ export default function MedicationsScreen() {
   const [mode, setMode] = useState<'view' | 'edit' | 'create'>('create');
   const [viewingMedication, setViewingMedication] = useState<MedicationWithDosages | null>(null);
 
-  // Form state
-  const [name, setName] = useState('');
-  const [route, setRoute] = useState('');
-  const [purpose, setPurpose] = useState('');
-  const [instructions, setInstructions] = useState('');
-  const [dosageAmount, setDosageAmount] = useState('');
-  const [dosageUnit, setDosageUnit] = useState('mg');
-  const [dosageTime, setDosageTime] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  // Form state — consolidated into reducer
+  const [form, dispatchForm] = useReducer(formReducer, initialFormState);
 
   // Helper for icons (duplicate from card for now or should be shared utility)
   const getRouteIcon = (route: string | null) => {
@@ -140,14 +173,7 @@ export default function MedicationsScreen() {
   };
 
   const resetForm = () => {
-    setName('');
-    setRoute('');
-    setPurpose('');
-    setInstructions('');
-    setDosageAmount('');
-    setDosageUnit('mg');
-    setDosageTime(new Date());
-    setShowDatePicker(false);
+    dispatchForm({ type: 'RESET' });
     setEditingMedicationId(null);
     setEditingDosageId(null);
     setMode('create');
@@ -168,34 +194,37 @@ export default function MedicationsScreen() {
 
   const handleEdit = (medication: MedicationWithDosages) => {
     setMode('edit');
-    setName(medication.name || '');
-    setRoute(medication.route || '');
-    setPurpose(medication.purpose || '');
-    setInstructions(medication.instructions || '');
+
+    const formPayload: Partial<FormState> = {
+      name: medication.name || '',
+      route: medication.route || '',
+      purpose: medication.purpose || '',
+      instructions: medication.instructions || '',
+    };
 
     // For MVP, we presume one dosage per medication or take the first one
     const dosage = medication.medication_dosages?.[0];
     if (dosage) {
       setEditingDosageId(dosage.id);
-      setDosageAmount(dosage.dosage_amount?.toString() || '');
-      setDosageUnit(dosage.dosage_unit || 'mg');
+      formPayload.dosageAmount = dosage.dosage_amount?.toString() || '';
+      formPayload.dosageUnit = dosage.dosage_unit || 'mg';
 
       if (dosage.time_of_day) {
         const [hours, minutes] = dosage.time_of_day.split(':');
         const date = new Date();
         date.setHours(parseInt(hours, 10));
         date.setMinutes(parseInt(minutes, 10));
-        setDosageTime(date);
+        formPayload.dosageTime = date;
       }
     }
 
+    dispatchForm({ type: 'LOAD', payload: formPayload });
     setEditingMedicationId(medication.id);
-    // setModalVisible(true); // Already visible if coming from View
   };
 
   const handleSave = async () => {
     if (!user || !selectedCycle) return;
-    if (!name.trim()) {
+    if (!form.name.trim()) {
       Alert.alert('Error', 'Please enter a medication name');
       return;
     }
@@ -207,18 +236,18 @@ export default function MedicationsScreen() {
       if (editingMedicationId) {
         // Update existing medication
         await MedicationService.updateMedication(user.id, editingMedicationId, {
-          name: name.trim(),
-          route: route || null,
-          purpose: purpose || null,
-          instructions: instructions || null,
+          name: form.name.trim(),
+          route: form.route || null,
+          purpose: form.purpose || null,
+          instructions: form.instructions || null,
         });
       } else {
         // Create new medication
         const newMedication = await MedicationService.createMedication(user.id, selectedCycle.id, {
-          name: name.trim(),
-          route: route || null,
-          purpose: purpose || null,
-          instructions: instructions || null,
+          name: form.name.trim(),
+          route: form.route || null,
+          purpose: form.purpose || null,
+          instructions: form.instructions || null,
           start_date: null,
           end_date: null,
         });
@@ -228,22 +257,22 @@ export default function MedicationsScreen() {
       // Handle Dosage — use deterministic HH:mm format (toLocaleTimeString
       // is locale/Hermes-dependent and can produce formats like "08.30" that
       // break the notification scheduler's split(':') parsing).
-      const hh = String(dosageTime.getHours()).padStart(2, '0');
-      const mm = String(dosageTime.getMinutes()).padStart(2, '0');
+      const hh = String(form.dosageTime.getHours()).padStart(2, '0');
+      const mm = String(form.dosageTime.getMinutes()).padStart(2, '0');
       const timeString = `${hh}:${mm}`;
 
       if (editingDosageId) {
         // Update existing dosage
         await MedicationService.updateDosage(user.id, editingDosageId, {
-          dosage_amount: dosageAmount.trim() ? parseFloat(dosageAmount) : null,
-          dosage_unit: dosageUnit,
+          dosage_amount: form.dosageAmount.trim() ? parseFloat(form.dosageAmount) : null,
+          dosage_unit: form.dosageUnit,
           time_of_day: timeString,
         });
-      } else if (medicationId && dosageAmount.trim()) {
+      } else if (medicationId && form.dosageAmount.trim()) {
         // Create new dosage
         await MedicationService.addDosage(user.id, medicationId, {
-          dosage_amount: parseFloat(dosageAmount),
-          dosage_unit: dosageUnit,
+          dosage_amount: parseFloat(form.dosageAmount),
+          dosage_unit: form.dosageUnit,
           time_of_day: timeString,
           frequency: 'Daily',
         });
@@ -304,6 +333,16 @@ export default function MedicationsScreen() {
     }
   };
 
+  const renderMedicationItem = useCallback(({ item }: { item: MedicationWithDosages }) => (
+    <MedicationCard
+      medication={item}
+      onConfirmDose={handleConfirmDose}
+      confirmedDosageIds={confirmedDosageIds}
+      onPress={() => handleView(item)}
+      onEdit={() => handleEdit(item)}
+    />
+  ), [confirmedDosageIds]);
+
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -316,14 +355,14 @@ export default function MedicationsScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Medications</Text>
-        {selectedCycle && (
-          <TouchableOpacity
+        {selectedCycle ? (
+          <Pressable
             style={styles.addButton}
             onPress={handleAdd}
           >
             <IconSymbol name="plus" size={24} color={NeutralColors.white} />
-          </TouchableOpacity>
-        )}
+          </Pressable>
+        ) : null}
       </View>
 
       {/* Cycle Selector */}
@@ -335,23 +374,23 @@ export default function MedicationsScreen() {
           contentContainerStyle={styles.cycleSelectorContent}
         >
           {cycles.map((cycle) => (
-            <TouchableOpacity
+            <Pressable
               key={cycle.id}
               style={[
                 styles.cycleChip,
-                selectedCycle?.id === cycle.id && styles.cycleChipSelected,
+                selectedCycle?.id === cycle.id ? styles.cycleChipSelected : undefined,
               ]}
               onPress={() => setSelectedCycle(cycle)}
             >
               <Text
                 style={[
                   styles.cycleChipText,
-                  selectedCycle?.id === cycle.id && styles.cycleChipTextSelected,
+                  selectedCycle?.id === cycle.id ? styles.cycleChipTextSelected : undefined,
                 ]}
               >
                 {cycle.cycle_type}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           ))}
         </ScrollView>
       )}
@@ -363,12 +402,12 @@ export default function MedicationsScreen() {
           <Text style={styles.emptySubtext}>
             Create a cycle first to add medications
           </Text>
-          <TouchableOpacity
+          <Pressable
             style={styles.createCycleButton}
             onPress={() => router.push('/cycle/new')}
           >
             <Text style={styles.createCycleButtonText}>Create Cycle</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       ) : medications.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -377,25 +416,17 @@ export default function MedicationsScreen() {
           <Text style={styles.emptySubtext}>
             Add medications to track for this cycle
           </Text>
-          <TouchableOpacity
+          <Pressable
             style={styles.createButton}
             onPress={() => setModalVisible(true)}
           >
             <Text style={styles.createButtonText}>Add Medication</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       ) : (
         <FlatList
           data={medications}
-          renderItem={({ item }) => (
-            <MedicationCard
-              medication={item}
-              onConfirmDose={handleConfirmDose}
-              confirmedDosageIds={confirmedDosageIds}
-              onPress={() => handleView(item)}
-              onEdit={() => handleEdit(item)}
-            />
-          )}
+          renderItem={renderMedicationItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
           refreshControl={
@@ -412,25 +443,25 @@ export default function MedicationsScreen() {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => {
+            <Pressable onPress={() => {
               setModalVisible(false);
               resetForm();
             }}>
               <Text style={styles.cancelText}>{mode === 'view' ? 'Close' : 'Cancel'}</Text>
-            </TouchableOpacity>
+            </Pressable>
             <Text style={styles.modalTitle}>
               {mode === 'view' ? 'Medication Details' : (editingMedicationId ? 'Edit Medication' : 'Add Medication')}
             </Text>
             {mode === 'view' ? (
-              <TouchableOpacity onPress={() => handleEdit(viewingMedication!)}>
+              <Pressable onPress={() => handleEdit(viewingMedication!)}>
                 <Text style={styles.saveText}>Edit</Text>
-              </TouchableOpacity>
+              </Pressable>
             ) : (
-              <TouchableOpacity onPress={handleSave} disabled={saving}>
-                <Text style={[styles.saveText, saving && styles.disabledText]}>
+              <Pressable onPress={handleSave} disabled={saving}>
+                <Text style={[styles.saveText, saving ? styles.disabledText : undefined]}>
                   {saving ? 'Saving...' : 'Save'}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             )}
           </View>
 
@@ -518,7 +549,7 @@ export default function MedicationsScreen() {
                   </View>
                 </View>
               )}
-              <View style={{ height: 40 }} />
+              <View style={{ height: Spacing.xl }} />
             </ScrollView>
           ) : (
             <ScrollView style={styles.form}>
@@ -527,30 +558,30 @@ export default function MedicationsScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="e.g., Gonal-F, Menopur"
-                value={name}
-                onChangeText={setName}
+                value={form.name}
+                onChangeText={(v) => dispatchForm({ type: 'SET_FIELD', field: 'name', value: v })}
               />
 
               <Text style={styles.label}>Route</Text>
               <View style={styles.routeRow}>
                 {ROUTES.map((r) => (
-                  <TouchableOpacity
+                  <Pressable
                     key={r}
                     style={[
                       styles.routeButton,
-                      route === r && styles.routeButtonSelected,
+                      form.route === r ? styles.routeButtonSelected : undefined,
                     ]}
-                    onPress={() => setRoute(r)}
+                    onPress={() => dispatchForm({ type: 'SET_FIELD', field: 'route', value: r })}
                   >
                     <Text
                       style={[
                         styles.routeButtonText,
-                        route === r && styles.routeButtonTextSelected,
+                        form.route === r ? styles.routeButtonTextSelected : undefined,
                       ]}
                     >
                       {r}
                     </Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 ))}
               </View>
 
@@ -558,8 +589,8 @@ export default function MedicationsScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="e.g., Follicle stimulation"
-                value={purpose}
-                onChangeText={setPurpose}
+                value={form.purpose}
+                onChangeText={(v) => dispatchForm({ type: 'SET_FIELD', field: 'purpose', value: v })}
               />
 
               <View style={styles.divider} />
@@ -571,8 +602,8 @@ export default function MedicationsScreen() {
                   <TextInput
                     style={styles.input}
                     placeholder="0.0"
-                    value={dosageAmount}
-                    onChangeText={setDosageAmount}
+                    value={form.dosageAmount}
+                    onChangeText={(v) => dispatchForm({ type: 'SET_FIELD', field: 'dosageAmount', value: v })}
                     keyboardType="numeric"
                   />
                 </View>
@@ -580,23 +611,23 @@ export default function MedicationsScreen() {
                   <Text style={styles.label}>Unit</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.unitScroll}>
                     {UNITS.map((u) => (
-                      <TouchableOpacity
+                      <Pressable
                         key={u}
                         style={[
                           styles.unitButton,
-                          dosageUnit === u && styles.unitButtonSelected,
+                          form.dosageUnit === u ? styles.unitButtonSelected : undefined,
                         ]}
-                        onPress={() => setDosageUnit(u)}
+                        onPress={() => dispatchForm({ type: 'SET_FIELD', field: 'dosageUnit', value: u })}
                       >
                         <Text
                           style={[
                             styles.unitButtonText,
-                            dosageUnit === u && styles.unitButtonTextSelected,
+                            form.dosageUnit === u ? styles.unitButtonTextSelected : undefined,
                           ]}
                         >
                           {u}
                         </Text>
-                      </TouchableOpacity>
+                      </Pressable>
                     ))}
                   </ScrollView>
                 </View>
@@ -604,40 +635,40 @@ export default function MedicationsScreen() {
 
               <Text style={styles.label}>Daily Schedule Time</Text>
               {Platform.OS === 'android' ? (
-                <TouchableOpacity
+                <Pressable
                   style={styles.dateButton}
-                  onPress={() => setShowDatePicker(true)}
+                  onPress={() => dispatchForm({ type: 'SET_FIELD', field: 'showDatePicker', value: true })}
                 >
                   <Text style={styles.dateButtonText}>
-                    {dosageTime.toLocaleTimeString([], {
+                    {form.dosageTime.toLocaleTimeString([], {
                       hour: '2-digit',
                       minute: '2-digit',
                       hour12: true
                     })}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               ) : null}
 
-              {(Platform.OS === 'ios' || showDatePicker) && (
+              {(Platform.OS === 'ios' || form.showDatePicker) ? (
                 <View style={Platform.OS === 'ios' ? styles.datePickerContainer : undefined}>
                   <DateTimePicker
-                    value={dosageTime}
+                    value={form.dosageTime}
                     mode="time"
                     is24Hour={false}
                     display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                     textColor={NeutralColors.gray900}
                     onChange={(event, date) => {
                       if (Platform.OS === 'android') {
-                        setShowDatePicker(false);
+                        dispatchForm({ type: 'SET_FIELD', field: 'showDatePicker', value: false });
                       }
                       if (date) {
-                        setDosageTime(date);
+                        dispatchForm({ type: 'SET_FIELD', field: 'dosageTime', value: date });
                       }
                     }}
                     style={styles.datePicker}
                   />
                 </View>
-              )}
+              ) : null}
 
               <View style={styles.divider} />
 
@@ -645,13 +676,13 @@ export default function MedicationsScreen() {
               <TextInput
                 style={[styles.input, styles.instructionsInput]}
                 placeholder="Special instructions associated with this medication"
-                value={instructions}
-                onChangeText={setInstructions}
+                value={form.instructions}
+                onChangeText={(v) => dispatchForm({ type: 'SET_FIELD', field: 'instructions', value: v })}
                 multiline
               />
 
               {/* Spacer for bottom safety */}
-              <View style={{ height: 40 }} />
+              <View style={{ height: Spacing.xl }} />
             </ScrollView>
           )}
         </View>

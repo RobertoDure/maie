@@ -11,13 +11,20 @@ import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    FlatList,
+    Pressable,
     RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
-    TouchableOpacity,
     View,
 } from 'react-native';
+
+const greetingFormatter = new Intl.DateTimeFormat('en-US', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+});
 
 const getCycleDay = (startDate: string) => {
   const start = new Date(startDate);
@@ -122,14 +129,7 @@ export default function DashboardScreen() {
   const isToday = selectedDate.toDateString() === new Date().toDateString();
 
   const getGreetingDate = () => {
-    const now = new Date();
-    const options: Intl.DateTimeFormatOptions = {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long'
-    };
-    // Capitalize first letter of each word
-    return now.toLocaleDateString('en-US', options)
+    return greetingFormatter.format(new Date())
       .split(' ')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
@@ -163,6 +163,7 @@ export default function DashboardScreen() {
 
       <ScrollView
         contentContainerStyle={styles.content}
+        contentInsetAdjustmentBehavior="automatic"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BrandColors.primary} />
         }
@@ -196,13 +197,13 @@ export default function DashboardScreen() {
             <Text style={styles.sectionTitle}>
               {isToday ? 'Appointment of the Day' : `Appointments for ${selectedDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}`}
             </Text>
-            {activeCycle && (
-              <TouchableOpacity
+            {activeCycle ? (
+              <Pressable
                 onPress={() => router.push(`/cycle/${activeCycle.id}/appointments` as any)}
               >
                 <Text style={styles.seeAllText}>See All</Text>
-              </TouchableOpacity>
-            )}
+              </Pressable>
+            ) : null}
           </View>
 
           {dayAppointments.length === 0 ? (
@@ -210,23 +211,28 @@ export default function DashboardScreen() {
               <Text style={styles.emptyText}>No appointments for this day</Text>
             </View>
           ) : (
-            dayAppointments.map((apt) => (
-              <AppointmentCard
-                key={apt.id}
-                appointment={apt}
-                onPress={activeCycle
-                  ? () => router.push(`/cycle/${activeCycle.id}/appointments` as any)
-                  : undefined
-                }
-              />
-            ))
+            <FlatList
+              data={dayAppointments}
+              renderItem={({ item: apt }) => (
+                <AppointmentCard
+                  key={apt.id}
+                  appointment={apt}
+                  onPress={activeCycle
+                    ? () => router.push(`/cycle/${activeCycle.id}/appointments` as any)
+                    : undefined
+                  }
+                />
+              )}
+              keyExtractor={(apt) => apt.id}
+              scrollEnabled={false}
+            />
           )}
         </View>
 
         {/* Quick Actions */}
         <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={[styles.quickAction, !hasTodayCheckin && styles.quickActionHighlight]}
+          <Pressable
+            style={[styles.quickAction, !hasTodayCheckin ? styles.quickActionHighlight : undefined]}
             onPress={() => router.push('/(tabs)/mood')}
           >
             <IconSymbol
@@ -237,20 +243,20 @@ export default function DashboardScreen() {
             <Text style={styles.quickActionText}>
               {hasTodayCheckin ? 'Checked In' : 'Mood'}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity
+          <Pressable
             style={styles.quickAction}
             onPress={() => router.push('/(tabs)/medications')}
           >
             <IconSymbol name="pills" size={28} color={BrandColors.primary} />
             <Text style={styles.quickActionText}>Medications</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
         {/* Active Cycle Card */}
         {activeCycle ? (
-          <TouchableOpacity
+          <Pressable
             style={styles.cycleCard}
             onPress={() => router.push(`/cycle/${activeCycle.id}` as any)}
           >
@@ -266,20 +272,20 @@ export default function DashboardScreen() {
                 </View>
               </View>
             </View>
-            {activeCycle.clinic_name && (
+            {activeCycle.clinic_name ? (
               <Text style={styles.clinicName}>{activeCycle.clinic_name}</Text>
-            )}
-          </TouchableOpacity>
+            ) : null}
+          </Pressable>
         ) : (
           <View style={styles.noCycleCard}>
             <IconSymbol name="calendar.badge.plus" size={48} color={NeutralColors.gray300} />
             <Text style={styles.noCycleText}>No active cycle</Text>
-            <TouchableOpacity
+            <Pressable
               style={styles.createCycleButton}
               onPress={() => router.push('/cycle/new')}
             >
               <Text style={styles.createCycleButtonText}>Start a Cycle</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         )}
 

@@ -3,7 +3,7 @@ import { BrandColors, NeutralColors, SemanticColors, Shadows } from '@/constants
 import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
 import * as ImagePicker from 'expo-image-picker';
 import React, { forwardRef, useCallback, useMemo } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 interface AvatarPickerSheetProps {
   /** Called with the selected image URI */
@@ -92,30 +92,30 @@ export const AvatarPickerSheet = forwardRef<BottomSheet, AvatarPickerSheetProps>
         <BottomSheetView style={styles.sheetContent}>
           <Text style={styles.sheetTitle}>Change Profile Photo</Text>
 
-          <TouchableOpacity style={styles.option} onPress={handleTakePhoto}>
+          <Pressable style={({ pressed }) => [styles.option, pressed && { opacity: 0.7 }]} onPress={handleTakePhoto}>
             <View style={[styles.optionIcon, { backgroundColor: BrandColors.primary }]}>
-              <IconSymbol name="calendar" size={20} color="#fff" />
+              <IconSymbol name="camera" size={20} color="#fff" />
             </View>
             <Text style={styles.optionText}>Take Photo</Text>
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity style={styles.option} onPress={handleChooseFromLibrary}>
+          <Pressable style={({ pressed }) => [styles.option, pressed && { opacity: 0.7 }]} onPress={handleChooseFromLibrary}>
             <View style={[styles.optionIcon, { backgroundColor: BrandColors.accent }]}>
-              <IconSymbol name="heart.fill" size={20} color="#fff" />
+              <IconSymbol name="photo" size={20} color="#fff" />
             </View>
             <Text style={styles.optionText}>Choose from Library</Text>
-          </TouchableOpacity>
+          </Pressable>
 
-          {hasExistingAvatar && onRemovePhoto && (
-            <TouchableOpacity style={styles.option} onPress={handleRemovePhoto}>
+          {hasExistingAvatar && onRemovePhoto ? (
+            <Pressable style={({ pressed }) => [styles.option, pressed && { opacity: 0.7 }]} onPress={handleRemovePhoto}>
               <View style={[styles.optionIcon, { backgroundColor: SemanticColors.error }]}>
                 <IconSymbol name="trash" size={20} color="#fff" />
               </View>
               <Text style={[styles.optionText, { color: SemanticColors.error }]}>
                 Remove Photo
               </Text>
-            </TouchableOpacity>
-          )}
+            </Pressable>
+          ) : null}
         </BottomSheetView>
       </BottomSheet>
     );

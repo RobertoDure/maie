@@ -13,11 +13,11 @@ import * as Haptics from 'expo-haptics';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
-    TouchableOpacity,
     View,
 } from 'react-native';
 
@@ -144,7 +144,7 @@ export default function MoodScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Wellness</Text>
       </View>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
         {hasTodayCheckin ? (
           <View style={styles.card}>
             <View style={[styles.cardAccent, { backgroundColor: SemanticColors.success }]} />
@@ -173,16 +173,16 @@ export default function MoodScreen() {
                 <Text style={styles.sectionTitle}>How are you feeling today?</Text>
                 <View style={styles.emojiRow}>
                   {moodEmojis.map((emoji, index) => (
-                    <TouchableOpacity
+                    <Pressable
                       key={index}
                       style={[
                         styles.emojiButton,
-                        moodScore === index + 1 && styles.emojiButtonSelected,
+                        moodScore === index + 1 ? styles.emojiButtonSelected : undefined,
                       ]}
                       onPress={() => handleMoodChange(index + 1)}
                     >
                       <Text style={styles.emoji}>{emoji}</Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   ))}
                 </View>
               </View>
@@ -191,16 +191,16 @@ export default function MoodScreen() {
                 <Text style={styles.sectionTitle}>Anxiety level</Text>
                 <View style={styles.emojiRow}>
                   {anxietyEmojis.map((emoji, index) => (
-                    <TouchableOpacity
+                    <Pressable
                       key={index}
                       style={[
                         styles.emojiButton,
-                        anxietyLevel === index + 1 && styles.emojiButtonSelected,
+                        anxietyLevel === index + 1 ? styles.emojiButtonSelected : undefined,
                       ]}
                       onPress={() => handleAnxietyChange(index + 1)}
                     >
                       <Text style={styles.emoji}>{emoji}</Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   ))}
                 </View>
               </View>
@@ -218,15 +218,15 @@ export default function MoodScreen() {
                 />
               </View>
 
-              <TouchableOpacity
-                style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+              <Pressable
+                style={[styles.submitButton, loading ? styles.submitButtonDisabled : undefined]}
                 onPress={submitCheckin}
                 disabled={loading}
               >
                 <Text style={styles.submitButtonText}>
                   {loading ? 'Saving...' : 'Complete Check-in'}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
           </View>
         )}
@@ -235,9 +235,8 @@ export default function MoodScreen() {
         <View style={styles.card}>
           <View style={[styles.cardAccent, { backgroundColor: WellnessPink }]} />
           <View style={styles.cardBody}>
-            <TouchableOpacity
+            <Pressable
               style={styles.cardTitleRow}
-              activeOpacity={0.7}
               onPress={() => setShowSymptomForm(!showSymptomForm)}
             >
               <View style={[styles.cardIconCircle, { backgroundColor: WellnessPink + '12' }]}>
@@ -249,55 +248,55 @@ export default function MoodScreen() {
                 size={18}
                 color={NeutralColors.gray400}
               />
-            </TouchableOpacity>
+            </Pressable>
 
-            {showSymptomForm && (
+            {showSymptomForm ? (
               <View style={styles.section}>
                 <Text style={styles.label}>Select symptom</Text>
                 <View style={styles.symptomGrid}>
                   {SYMPTOMS.map((symptom) => (
-                    <TouchableOpacity
+                    <Pressable
                       key={symptom}
                       style={[
                         styles.symptomChip,
-                        selectedSymptom === symptom && styles.symptomChipSelected,
+                        selectedSymptom === symptom ? styles.symptomChipSelected : undefined,
                       ]}
                       onPress={() => setSelectedSymptom(symptom)}
                     >
                       <Text
                         style={[
                           styles.symptomChipText,
-                          selectedSymptom === symptom && styles.symptomChipTextSelected,
+                          selectedSymptom === symptom ? styles.symptomChipTextSelected : undefined,
                         ]}
                       >
                         {symptom}
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   ))}
                 </View>
 
-                {selectedSymptom && (
+                {selectedSymptom ? (
                   <>
                     <Text style={styles.label}>Severity: {severityLabels[symptomSeverity - 1]}</Text>
                     <View style={styles.severityRow}>
                       {[1, 2, 3, 4, 5].map((level) => (
-                        <TouchableOpacity
+                        <Pressable
                           key={level}
                           style={[
                             styles.severityButton,
-                            symptomSeverity === level && styles.severityButtonSelected,
+                            symptomSeverity === level ? styles.severityButtonSelected : undefined,
                           ]}
                           onPress={() => setSymptomSeverity(level)}
                         >
                           <Text
                             style={[
                               styles.severityText,
-                              symptomSeverity === level && styles.severityTextSelected,
+                              symptomSeverity === level ? styles.severityTextSelected : undefined,
                             ]}
                           >
                             {level}
                           </Text>
-                        </TouchableOpacity>
+                        </Pressable>
                       ))}
                     </View>
 
@@ -309,19 +308,19 @@ export default function MoodScreen() {
                       onChangeText={setSymptomNotes}
                     />
 
-                    <TouchableOpacity
-                      style={[styles.symptomSubmitButton, savingSymptom && styles.submitButtonDisabled]}
+                    <Pressable
+                      style={[styles.symptomSubmitButton, savingSymptom ? styles.submitButtonDisabled : undefined]}
                       onPress={submitSymptom}
                       disabled={savingSymptom}
                     >
                       <Text style={styles.submitButtonText}>
                         {savingSymptom ? 'Saving...' : 'Log Symptom'}
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   </>
-                )}
+                ) : null}
               </View>
-            )}
+            ) : null}
           </View>
         </View>
 

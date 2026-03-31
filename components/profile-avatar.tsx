@@ -1,11 +1,11 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { BrandColors, NeutralColors, Shadows } from '@/constants/theme';
 import { Image } from 'expo-image';
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
     ActivityIndicator,
+    Pressable,
     StyleSheet,
-    TouchableOpacity,
     View,
 } from 'react-native';
 
@@ -33,26 +33,30 @@ export function ProfileAvatar({
   const editButtonSize = size * 0.32;
   const editIconSize = editButtonSize * 0.5;
 
+  const sizeStyles = useMemo(() => ({
+    wrapper: { width: size, height: size },
+    avatar: { width: size, height: size, borderRadius: size / 2 },
+    editButton: {
+      width: editButtonSize,
+      height: editButtonSize,
+      borderRadius: editButtonSize / 2,
+      bottom: 0 as const,
+      right: 0 as const,
+    },
+  }), [size, editButtonSize]);
+
   return (
-    <View style={[styles.wrapper, { width: size, height: size }]}>
+    <View style={[styles.wrapper, sizeStyles.wrapper]}>
       <View
         style={[
           styles.avatarContainer,
-          {
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-          },
+          sizeStyles.avatar,
         ]}
       >
         {uri ? (
           <Image
             source={{ uri }}
-            style={{
-              width: size,
-              height: size,
-              borderRadius: size / 2,
-            }}
+            style={sizeStyles.avatar}
             contentFit="cover"
             transition={200}
             placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
@@ -61,40 +65,30 @@ export function ProfileAvatar({
           <IconSymbol name="person.fill" size={iconSize} color={BrandColors.primary} />
         )}
 
-        {loading && (
+        {loading ? (
           <View
             style={[
               styles.loadingOverlay,
-              {
-                width: size,
-                height: size,
-                borderRadius: size / 2,
-              },
+              sizeStyles.avatar,
             ]}
           >
             <ActivityIndicator size="small" color="#fff" />
           </View>
-        )}
+        ) : null}
       </View>
 
-      {showEditButton && (
-        <TouchableOpacity
-          style={[
+      {showEditButton ? (
+        <Pressable
+          style={({ pressed }) => [
             styles.editButton,
-            {
-              width: editButtonSize,
-              height: editButtonSize,
-              borderRadius: editButtonSize / 2,
-              bottom: 0,
-              right: 0,
-            },
+            sizeStyles.editButton,
+            pressed && { opacity: 0.7 },
           ]}
           onPress={onEditPress}
-          activeOpacity={0.7}
         >
           <IconSymbol name="pencil" size={editIconSize} color="#fff" />
-        </TouchableOpacity>
-      )}
+        </Pressable>
+      ) : null}
     </View>
   );
 }

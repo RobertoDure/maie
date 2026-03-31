@@ -2,11 +2,11 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { BrandColors, NeutralColors, Radius, SemanticColors, Shadows, Spacing } from '@/constants/theme';
 import { Database } from '@/lib/database.types';
 import * as Haptics from 'expo-haptics';
-import React from 'react';
+import React, { memo } from 'react';
 import {
+    Pressable,
     StyleSheet,
     Text,
-    TouchableOpacity,
     View,
 } from 'react-native';
 
@@ -21,7 +21,7 @@ interface MedicationCardProps {
     confirmedDosageIds?: string[];
 }
 
-export function MedicationCard({
+export const MedicationCard = memo(function MedicationCard({
     medication,
     onConfirmDose,
     onPress,
@@ -64,10 +64,9 @@ export function MedicationCard({
     };
 
     return (
-        <TouchableOpacity
-            style={styles.card}
+        <Pressable
+            style={({ pressed }) => [styles.card, pressed && { opacity: 0.7 }]}
             onPress={onPress}
-            activeOpacity={0.7}
         >
             {/* Left accent border */}
             <View style={styles.accentBorder} />
@@ -84,11 +83,11 @@ export function MedicationCard({
                     </View>
                     <View style={styles.headerInfo}>
                         <Text style={styles.name} numberOfLines={1}>{medication.name}</Text>
-                        {medication.route && (
+                        {medication.route ? (
                             <View style={styles.routeBadge}>
                                 <Text style={styles.routeText}>{medication.route}</Text>
                             </View>
-                        )}
+                        ) : null}
                     </View>
                     {/* <View style={styles.actions}>
                         {onEdit && (
@@ -100,12 +99,12 @@ export function MedicationCard({
                 </View>
 
                 {/* Purpose */}
-                {medication.purpose && (
+                {medication.purpose ? (
                     <View style={styles.detailRow}>
                         <IconSymbol name="info.circle" size={14} color={NeutralColors.gray400} />
                         <Text style={styles.detailText} numberOfLines={2}>{medication.purpose}</Text>
                     </View>
-                )}
+                ) : null}
 
                 {/* Dosages */}
                 {dosages.length > 0 && (
@@ -128,12 +127,11 @@ export function MedicationCard({
                 )}
 
                 {/* Confirm dose button */}
-                {nextDosage && onConfirmDose && (
-                    <TouchableOpacity
-                        style={[styles.confirmButton, isTaken && styles.confirmButtonTaken]}
+                {nextDosage && onConfirmDose ? (
+                    <Pressable
+                        style={({ pressed }) => [styles.confirmButton, isTaken && styles.confirmButtonTaken, pressed && !isTaken && { opacity: 0.8 }]}
                         onPress={handleConfirm}
                         disabled={isTaken}
-                        activeOpacity={0.8}
                     >
                         <IconSymbol
                             name={isTaken ? "checkmark.circle.fill" : "checkmark"}
@@ -143,20 +141,20 @@ export function MedicationCard({
                         <Text style={[styles.confirmText, isTaken && styles.confirmTextTaken]}>
                             {isTaken ? 'Taken Today' : 'Confirm Dose'}
                         </Text>
-                    </TouchableOpacity>
-                )}
+                    </Pressable>
+                ) : null}
 
                 {/* Instructions */}
-                {medication.instructions && (
+                {medication.instructions ? (
                     <View style={styles.instructionsRow}>
                         <IconSymbol name="info.circle" size={14} color={NeutralColors.gray400} />
                         <Text style={styles.instructions} numberOfLines={2}>{medication.instructions}</Text>
                     </View>
-                )}
+                ) : null}
             </View>
-        </TouchableOpacity>
+        </Pressable>
     );
-}
+});
 
 const styles = StyleSheet.create({
     card: {
