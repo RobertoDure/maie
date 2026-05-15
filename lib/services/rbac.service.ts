@@ -1,6 +1,5 @@
 import { Database } from '../database.types';
 import { supabase } from '../supabase';
-import { AuditService } from './audit.service';
 
 type UserRole = Database['public']['Tables']['user_roles']['Row'];
 
@@ -19,28 +18,52 @@ export class RBACService {
         .eq('id', cycleId)
         .single();
 
-      if (cycle?.patient_id === userId) {
-        await AuditService.log(userId, 'READ', 'cycle', cycleId);
-        return true;
-      }
+      if (cycle?.patient_id === userId) return true;
 
-      // Check if user has shared access
+      // Check if user has shared access (including non-expiring)
+      const now = new Date().toISOString();
       const { data: sharedAccess } = await supabase
         .from('shared_access')
-        .select('*')
+        .select('id')
         .eq('cycle_id', cycleId)
         .eq('granted_to', userId)
-        .gt('expires_at', new Date().toISOString())
-        .single();
+        .or(`expires_at.is.null,expires_at.gt.${now}`)
+        .maybeSingle();
 
-      if (sharedAccess) {
-        await AuditService.log(userId, 'READ', 'cycle', cycleId);
-        return true;
-      }
-
-      return false;
+      return !!sharedAccess;
     } catch (error) {
       console.error('Error checking cycle read permission:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Check if user has write access to a cycle
+   */
+  static async canWriteCycle(userId: string, cycleId: string): Promise<boolean> {
+    try {
+      const { data: cycle } = await supabase
+        .from('cycles')
+        .select('patient_id')
+        .eq('id', cycleId)
+        .single();
+
+      if (cycle?.patient_id === userId) return true;
+
+      // Check if user has shared write access (including non-expiring)
+      const now = new Date().toISOString();
+      const { data: sharedAccess } = await supabase
+        .from('shared_access')
+        .select('id')
+        .eq('cycle_id', cycleId)
+        .eq('granted_to', userId)
+        .eq('access_level', 'write')
+        .or(`expires_at.is.null,expires_at.gt.${now}`)
+        .maybeSingle();
+
+      return !!sharedAccess;
+    } catch (error) {
+      console.error('Error checking cycle write permission:', error);
       return false;
     }
   }
@@ -68,14 +91,15 @@ export class RBACService {
 
       // Check if user is partner with write access
       if (role === 'partner') {
+        const now = new Date().toISOString();
         const { data: sharedAccess } = await supabase
           .from('shared_access')
-          .select('*')
+          .select('id')
           .eq('cycle_id', cycleId)
           .eq('granted_to', userId)
           .eq('access_level', 'write')
-          .gt('expires_at', new Date().toISOString())
-          .single();
+          .or(`expires_at.is.null,expires_at.gt.${now}`)
+          .maybeSingle();
 
         return !!sharedAccess;
       }
