@@ -42,6 +42,22 @@ const MAPPING = {
   'plus': 'add',
   'trash': 'delete',
   'pencil': 'edit',
+  'photo': 'photo',
+  'xmark.circle.fill': 'cancel',
+  'camera': 'camera-alt',
+  'clock': 'access-time',
+  'mappin': 'place',
+  'xmark': 'close',
+  'person.badge.plus': 'person-add',
+  'bubble.left': 'chat-bubble-outline',
+  'arrow.up': 'arrow-upward',
+  'flag': 'flag',
+  'star.fill': 'star',
+  'pin.fill': 'push-pin',
+  'face.smiling': 'sentiment-satisfied',
+  'exclamationmark.triangle': 'warning',
+  'text.bubble': 'textsms',
+  'heart.circle': 'favorite',
 } as IconMapping;
 
 /**

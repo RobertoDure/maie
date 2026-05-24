@@ -6,7 +6,7 @@ import { Database } from '@/lib/database.types';
 import { AppointmentService } from '@/lib/services/appointment.service';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -54,6 +54,8 @@ export default function AppointmentsScreen() {
     const [clinicianName, setClinicianName] = useState('');
     const [notes, setNotes] = useState('');
     const [showDatePicker, setShowDatePicker] = useState(false);
+
+    const scrollViewRef = useRef<ScrollView>(null);
 
     const isEditing = editingAppointment !== null;
 
@@ -296,7 +298,14 @@ export default function AppointmentsScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    <ScrollView style={styles.form} keyboardShouldPersistTaps="handled">
+                    <ScrollView
+                        ref={scrollViewRef}
+                        style={styles.form}
+                        contentContainerStyle={styles.formContent}
+                        keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="interactive"
+                        automaticallyAdjustKeyboardInsets
+                    >
                         <Text style={styles.label}>Title</Text>
                         <TextInput
                             style={styles.input}
@@ -474,6 +483,9 @@ const styles = StyleSheet.create({
     },
     form: {
         padding: Spacing.xl,
+    },
+    formContent: {
+        paddingBottom: 120,
     },
     label: {
         fontSize: 14,
