@@ -11,7 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const { session, loading } = useAuth();
-  const colors = Colors[colorScheme ?? 'light'];
+  const colors = Colors[colorScheme];
 
   if (loading) {
     return (

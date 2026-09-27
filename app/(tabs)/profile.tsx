@@ -4,9 +4,8 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { BrandColors, NeutralColors, SemanticColors, Shadows, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { UserProfileService } from '@/lib/services';
-import BottomSheet from '@gorhom/bottom-sheet';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     Alert,
     Pressable,
@@ -19,7 +18,7 @@ import {
 export default function ProfileScreen() {
   const { user, signOut, role } = useAuth();
   const router = useRouter();
-  const sheetRef = useRef<BottomSheet>(null);
+  const [showPhotoPicker, setShowPhotoPicker] = useState(false);
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarLoading, setAvatarLoading] = useState(false);
@@ -104,7 +103,7 @@ export default function ProfileScreen() {
             size={100}
             uri={avatarUrl}
             showEditButton
-            onEditPress={() => sheetRef.current?.expand()}
+            onEditPress={() => setShowPhotoPicker(true)}
             loading={avatarLoading}
           />
           <View style={{ height: Spacing.lg }} />
@@ -157,7 +156,8 @@ export default function ProfileScreen() {
       </ScrollView>
 
       <AvatarPickerSheet
-        ref={sheetRef}
+        visible={showPhotoPicker}
+        onClose={() => setShowPhotoPicker(false)}
         onImageSelected={handleImageSelected}
         onRemovePhoto={handleRemovePhoto}
         hasExistingAvatar={!!avatarUrl}
