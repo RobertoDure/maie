@@ -1,19 +1,19 @@
 import { Database } from '../database.types';
 import { supabase } from '../supabase';
+import { assertUuid } from '../uuid';
 import { AuditService } from './audit.service';
 
 type Conversation = Database['public']['Tables']['conversations']['Row'];
-type ConversationParticipant = Database['public']['Tables']['conversation_participants']['Row'];
 type Message = Database['public']['Tables']['messages']['Row'];
 type ConversationInvite = Database['public']['Tables']['conversation_invites']['Row'];
 
 export interface ConversationWithDetails extends Conversation {
-  participants: Array<{
+  participants: {
     user_id: string;
     role: string;
     full_name: string | null;
     avatar_url: string | null;
-  }>;
+  }[];
   last_message: Message | null;
   unread_count: number;
 }
@@ -21,6 +21,8 @@ export interface ConversationWithDetails extends Conversation {
 export class ConversationService {
   static async getConversations(userId: string): Promise<ConversationWithDetails[]> {
     try {
+      assertUuid(userId, 'user ID');
+
       // Get conversations the user participates in
       const { data: participations, error: pError } = await supabase
         .from('conversation_participants')
@@ -30,7 +32,10 @@ export class ConversationService {
       if (pError) throw pError;
       if (!participations || participations.length === 0) return [];
 
-      const conversationIds = participations.map((p) => p.conversation_id);
+      const conversationIds = participations.map((p) => {
+        assertUuid(p.conversation_id, 'conversation ID in participant record');
+        return p.conversation_id;
+      });
 
       const { data: conversations, error } = await supabase
         .from('conversations')
@@ -50,6 +55,9 @@ export class ConversationService {
       const participantUserIds = [
         ...new Set((allParticipants || []).map((p) => p.user_id)),
       ];
+      participantUserIds.forEach((participantUserId) => {
+        assertUuid(participantUserId, 'user ID in participant record');
+      });
 
       const { data: users } = await supabase
         .from('users')
@@ -141,6 +149,9 @@ export class ConversationService {
     targetUserId: string
   ): Promise<Conversation> {
     try {
+      assertUuid(userId, 'user ID');
+      assertUuid(targetUserId, 'target user ID');
+
       // Check if direct chat already exists between these two users
       const { data: myConvs } = await supabase
         .from('conversation_participants')
@@ -148,7 +159,10 @@ export class ConversationService {
         .eq('user_id', userId);
 
       if (myConvs && myConvs.length > 0) {
-        const myConvIds = myConvs.map((c) => c.conversation_id);
+        const myConvIds = myConvs.map((c) => {
+          assertUuid(c.conversation_id, 'conversation ID in participant record');
+          return c.conversation_id;
+        });
 
         const { data: theirConvs } = await supabase
           .from('conversation_participants')
@@ -157,7 +171,10 @@ export class ConversationService {
           .in('conversation_id', myConvIds);
 
         if (theirConvs && theirConvs.length > 0) {
-          const sharedConvIds = theirConvs.map((c) => c.conversation_id);
+          const sharedConvIds = theirConvs.map((c) => {
+            assertUuid(c.conversation_id, 'conversation ID in participant record');
+            return c.conversation_id;
+          });
           const { data: directConv } = await supabase
             .from('conversations')
             .select('*')
@@ -198,6 +215,9 @@ export class ConversationService {
     participantIds: string[]
   ): Promise<Conversation> {
     try {
+      assertUuid(userId, 'user ID');
+      participantIds.forEach((participantId) => assertUuid(participantId, 'participant ID'));
+
       const { data: conv, error } = await supabase
         .from('conversations')
         .insert({
@@ -233,6 +253,10 @@ export class ConversationService {
     invitedUserId: string
   ): Promise<ConversationInvite> {
     try {
+      assertUuid(conversationId, 'conversation ID');
+      assertUuid(invitedBy, 'inviter ID');
+      assertUuid(invitedUserId, 'invited user ID');
+
       const { data, error } = await supabase
         .from('conversation_invites')
         .insert({
@@ -258,6 +282,9 @@ export class ConversationService {
     accept: boolean
   ): Promise<void> {
     try {
+      assertUuid(inviteId, 'invite ID');
+      assertUuid(userId, 'user ID');
+
       const { data: invite, error: fetchError } = await supabase
         .from('conversation_invites')
         .select('*')
@@ -275,6 +302,7 @@ export class ConversationService {
         .eq('id', inviteId);
 
       if (accept) {
+        assertUuid(invite.conversation_id, 'conversation ID in invite');
         await supabase.from('conversation_participants').insert({
           conversation_id: invite.conversation_id,
           user_id: userId,
@@ -292,6 +320,9 @@ export class ConversationService {
     userId: string
   ): Promise<void> {
     try {
+      assertUuid(conversationId, 'conversation ID');
+      assertUuid(userId, 'user ID');
+
       await supabase
         .from('conversation_participants')
         .delete()
@@ -307,6 +338,8 @@ export class ConversationService {
 
   static async getPendingInvites(userId: string): Promise<ConversationInvite[]> {
     try {
+      assertUuid(userId, 'user ID');
+
       const { data, error } = await supabase
         .from('conversation_invites')
         .select('*')
@@ -324,6 +357,8 @@ export class ConversationService {
 
   static async searchUsers(query: string, currentUserId: string) {
     try {
+      assertUuid(currentUserId, 'user ID');
+
       const { data, error } = await supabase
         .from('users')
         .select('id, full_name, avatar_url, email')

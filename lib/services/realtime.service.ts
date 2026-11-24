@@ -1,6 +1,7 @@
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { Database } from '../database.types';
 import { supabase } from '../supabase';
+import { assertUuid } from '../uuid';
 
 type Message = Database['public']['Tables']['messages']['Row'];
 type Post = Database['public']['Tables']['posts']['Row'];
@@ -12,6 +13,8 @@ export class RealtimeService {
     conversationId: string,
     onMessage: (message: Message) => void
   ): RealtimeChannel {
+    assertUuid(conversationId, 'conversation ID');
+
     const channelName = `chat:${conversationId}`;
 
     // Unsubscribe if already exists
@@ -66,6 +69,9 @@ export class RealtimeService {
     userId: string,
     isTyping: boolean
   ): void {
+    assertUuid(conversationId, 'conversation ID');
+    assertUuid(userId, 'user ID');
+
     const channelName = `chat:${conversationId}`;
     const channel = this.channels.get(channelName);
 
@@ -82,6 +88,8 @@ export class RealtimeService {
     conversationId: string,
     onTyping: (userId: string, isTyping: boolean) => void
   ): void {
+    assertUuid(conversationId, 'conversation ID');
+
     const channelName = `chat:${conversationId}`;
     const channel = this.channels.get(channelName);
 
@@ -98,6 +106,9 @@ export class RealtimeService {
     userId: string,
     onPresenceChange: (online: string[]) => void
   ): void {
+    assertUuid(conversationId, 'conversation ID');
+    assertUuid(userId, 'user ID');
+
     const channelName = `chat:${conversationId}`;
     const channel = this.channels.get(channelName);
 
@@ -122,6 +133,8 @@ export class RealtimeService {
     userId: string,
     onInvite: (invite: any) => void
   ): RealtimeChannel {
+    assertUuid(userId, 'user ID');
+
     const channelName = `invites:${userId}`;
 
     this.unsubscribe(channelName);

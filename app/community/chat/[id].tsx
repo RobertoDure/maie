@@ -9,6 +9,7 @@ import {
     MessageWithSender,
     RealtimeService,
 } from '@/lib/services';
+import { isUuid } from '@/lib/uuid';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -44,7 +45,7 @@ export default function ChatScreen() {
 
   // Load conversation info + messages
   useEffect(() => {
-    if (!user || !conversationId) return;
+    if (!user || !isUuid(conversationId)) return;
 
     const load = async () => {
       try {
@@ -83,11 +84,11 @@ export default function ChatScreen() {
     };
 
     load();
-  }, [user, conversationId]);
+  }, [user, conversationId, router]);
 
   // Realtime subscription
   useEffect(() => {
-    if (!conversationId || !user) return;
+    if (!isUuid(conversationId) || !user) return;
 
     RealtimeService.subscribeToConversation(conversationId, async (newMsg) => {
       // Fetch full message with sender info
@@ -211,6 +212,17 @@ export default function ChatScreen() {
   const typingNames = typingUsers
     .map((id) => participantNames.get(id) || 'Someone')
     .filter(Boolean);
+
+  if (!isUuid(conversationId)) {
+    return (
+      <View style={[styles.screen, { paddingTop: insets.top }]}>
+        <Text style={styles.emptyText}>This chat link is invalid or expired.</Text>
+        <Pressable onPress={() => router.replace('/(tabs)/community')}>
+          <Text style={styles.headerTitle}>Return to Community</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   if (loading) {
     return (

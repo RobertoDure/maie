@@ -11,6 +11,7 @@ import {
     PostWithAuthor,
     RealtimeService,
 } from '@/lib/services';
+import { isUuid } from '@/lib/uuid';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -169,7 +170,13 @@ export default function CommunityScreen() {
       <ChatListItem
         conversation={item}
         currentUserId={user?.id || ''}
-        onPress={() => router.push(`/community/chat/${item.id}`)}
+        onPress={() => {
+          if (!isUuid(item.id)) {
+            Alert.alert('Invalid chat', 'This chat has an invalid ID. Refresh your chats and try again.');
+            return;
+          }
+          router.push(`/community/chat/${item.id}`);
+        }}
       />
     ),
     [user?.id, router]

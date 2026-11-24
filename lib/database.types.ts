@@ -46,6 +46,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -66,6 +67,7 @@ export interface Database {
           role?: string | null
           created_at?: string
         }
+        Relationships: []
       }
       cycles: {
         Row: {
@@ -101,6 +103,7 @@ export interface Database {
           protocol_name?: string | null
           created_at?: string
         }
+        Relationships: []
       }
       cycle_phases: {
         Row: {
@@ -127,6 +130,7 @@ export interface Database {
           end_date?: string | null
           order_index?: number | null
         }
+        Relationships: []
       }
       appointments: {
         Row: {
@@ -162,6 +166,7 @@ export interface Database {
           notes?: string | null
           created_at?: string
         }
+        Relationships: []
       }
       medications: {
         Row: {
@@ -194,6 +199,7 @@ export interface Database {
           end_date?: string | null
           instructions?: string | null
         }
+        Relationships: []
       }
       medication_dosages: {
         Row: {
@@ -223,6 +229,7 @@ export interface Database {
           frequency?: string | null
           created_at?: string
         }
+        Relationships: []
       }
       medication_events: {
         Row: {
@@ -255,6 +262,64 @@ export interface Database {
           confirmation_method?: string | null
           created_at?: string
         }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          id: string
+          conversation_id: string
+          sender_id: string
+          content: string
+          message_type: string
+          attachment_url: string | null
+          reply_to_id: string | null
+          is_deleted: boolean
+          edited_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          sender_id: string
+          content: string
+          message_type?: string
+          attachment_url?: string | null
+          reply_to_id?: string | null
+          is_deleted?: boolean
+          edited_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          sender_id?: string
+          content?: string
+          message_type?: string
+          attachment_url?: string | null
+          reply_to_id?: string | null
+          is_deleted?: boolean
+          edited_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      message_read_receipts: {
+        Row: {
+          conversation_id: string
+          user_id: string
+          last_read_at: string
+        }
+        Insert: {
+          conversation_id: string
+          user_id: string
+          last_read_at: string
+        }
+        Update: {
+          conversation_id?: string
+          user_id?: string
+          last_read_at?: string
+        }
+        Relationships: []
       }
       mood_checkins: {
         Row: {
@@ -284,6 +349,7 @@ export interface Database {
           notes?: string | null
           created_at?: string
         }
+        Relationships: []
       }
       symptom_logs: {
         Row: {
@@ -313,6 +379,7 @@ export interface Database {
           notes?: string | null
           logged_at?: string
         }
+        Relationships: []
       }
       shared_access: {
         Row: {
@@ -342,6 +409,7 @@ export interface Database {
           expires_at?: string | null
           created_at?: string
         }
+        Relationships: []
       }
       audit_logs: {
         Row: {
@@ -371,6 +439,7 @@ export interface Database {
           ip_address?: string | null
           created_at?: string
         }
+        Relationships: []
       }
     }
     Views: {

@@ -3,9 +3,8 @@ import { BrandColors, NeutralColors, Radius, SemanticColors, Shadows, Spacing } 
 import { useAuth } from '@/contexts/auth-context';
 import { Database } from '@/lib/database.types';
 import { CycleService, MedicationService } from '@/lib/services';
-import { useFocusEffect } from '@react-navigation/native';
-import { router, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -30,7 +29,7 @@ export default function CycleDetailScreen() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
-    const loadCycleData = async () => {
+    const loadCycleData = useCallback(async () => {
         if (!user || !id) return;
 
         try {
@@ -49,16 +48,12 @@ export default function CycleDetailScreen() {
             setLoading(false);
             setRefreshing(false);
         }
-    };
-
-    useEffect(() => {
-        loadCycleData();
     }, [user, id]);
 
     useFocusEffect(
         useCallback(() => {
             loadCycleData();
-        }, [user, id])
+        }, [loadCycleData])
     );
 
     const onRefresh = () => {

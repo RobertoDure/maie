@@ -2,6 +2,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { BrandColors, NeutralColors, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { ConversationService } from '@/lib/services';
+import { isUuid } from '@/lib/uuid';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -74,6 +75,9 @@ export default function NewChatScreen() {
       setCreating(true);
       try {
         const conv = await ConversationService.createDirectChat(user.id, targetUser.id);
+        if (!isUuid(conv.id)) {
+          throw new Error('The chat was created without a valid ID. Please try again.');
+        }
         router.replace(`/community/chat/${conv.id}`);
       } catch (error: any) {
         Alert.alert('Error', error.message);
@@ -98,6 +102,9 @@ export default function NewChatScreen() {
         groupName.trim(),
         participantIds
       );
+      if (!isUuid(conv.id)) {
+        throw new Error('The chat was created without a valid ID. Please try again.');
+      }
       router.replace(`/community/chat/${conv.id}`);
     } catch (error: any) {
       Alert.alert('Error', error.message);
